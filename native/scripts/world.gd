@@ -133,7 +133,10 @@ func _draw():
 	# Rug and objects, sorted with characters by ground depth.
 	poly([iso(Vector2(4.4,5.8),13),iso(Vector2(8.3,5.8),13),iso(Vector2(8.3,8.8),13),iso(Vector2(4.4,8.8),13)],"789a83")
 	poly([iso(Vector2(4.6,6),14),iso(Vector2(8.1,6),14),iso(Vector2(8.1,8.6),14),iso(Vector2(4.6,8.6),14)],"93af91")
+	if state.data.decor.reading_corner:reading_corner(Vector2(4,11.3))
 	var entities=props.duplicate()
+	if state.data.decor.lanterns:
+		for v in [Vector2(6.2,10.4),Vector2(7.5,12.8)]:entities.append({"kind":"outdoor_lantern","pos":v})
 	for i in 2:entities.append({"kind":"actor","pos":positions[i],"index":i})
 	for p in [Vector2(1.5,2.4),Vector2(2.1,12.4),Vector2(12.6,11.5),Vector2(13.4,1.8)]:entities.append({"kind":"tree","pos":p})
 	entities.sort_custom(func(a,b):return a.pos.x+a.pos.y<b.pos.x+b.pos.y)
@@ -144,6 +147,7 @@ func _draw():
 			"desk":desk(entity.pos)
 			"bed":bed(entity.pos)
 			"lamp":lamp(entity.pos)
+			"outdoor_lantern":lantern(entity.pos,state.data.night)
 			"plant":plant(entity.pos,true)
 			"bush":tree(entity.pos,1)
 			"actor":companion(entity.pos,int(entity.index),int(state.data.selected)==int(entity.index),actions[int(entity.index)]=="Walking",actions[int(entity.index)])

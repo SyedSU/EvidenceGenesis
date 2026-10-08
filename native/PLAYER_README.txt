@@ -1,5 +1,5 @@
 EVIDENCE GENESIS - THE FIRST LITTLE WORLD
-Windows playable build 0.2.0
+Windows playable build 0.3.0
 
 START
 1. Extract the entire ZIP (right-click > Extract All).
@@ -30,7 +30,12 @@ To make a PDF, open the HTML and choose Print > Save as PDF.
 Settings: rename your companion, assign Document maker or Reviewer,
 feed a berry, toggle music or lighting, fullscreen, back up or restore.
 Rest at the bed. Gather berries at the bush. Approving a document
-awards one star; buy a little flower garden with two stars.
+awards one star. Open Missions to collect six milestone rewards.
+Feed and rest your companions, teach lessons, approve work from each,
+and build a garden to complete the mission board. Each reward is
+collected once. Workshop sells a garden (2 stars), lanterns (3 stars)
+and a reading corner (4 stars). Companions level up every three approved
+documents. Previous version 0.2 workshop saves load automatically.
 
 DATA
 Autosave: %APPDATA%\EvidenceGenesis\workshop.json

@@ -17,7 +17,7 @@ LICENSES = {
 def download(url, path):
  path.parent.mkdir(parents=True, exist_ok=True)
  if path.exists(): return path
- request=urllib.request.Request(url, headers={'User-Agent':'EvidenceGenesis-build/0.2'})
+ request=urllib.request.Request(url, headers={'User-Agent':'EvidenceGenesis-build/0.3'})
  with urllib.request.urlopen(request,timeout=120) as response, path.with_suffix('.download').open('wb') as output:
   shutil.copyfileobj(response,output)
  path.with_suffix('.download').replace(path)
@@ -43,7 +43,7 @@ def run_game(executable, args, marker=None, isolated=True):
    raise RuntimeError('Native test failed: '+str(args))
 
 def package(folder, destination):
- manifest={'version':'0.2.0','godot':GODOT,'llama_cpp':LLAMA,'model':'Qwen2.5-0.5B-Instruct Q4_K_M','model_source':MODEL_URL,'files':{}}
+ manifest={'version':'0.3.0','godot':GODOT,'llama_cpp':LLAMA,'model':'Qwen2.5-0.5B-Instruct Q4_K_M','model_source':MODEL_URL,'files':{}}
  for path in sorted(folder.rglob('*')):
   if path.is_file() and path.name!='SHA256SUMS.json':manifest['files'][path.relative_to(folder).as_posix()]=digest(path)
  (folder/'SHA256SUMS.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
@@ -55,7 +55,7 @@ def package(folder, destination):
  print('Package:',destination,'SHA256:',digest(destination))
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--cache',type=Path,default=ROOT/'build/tools');parser.add_argument('--godot',type=Path);parser.add_argument('--model',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--package-only',action='store_true');parser.add_argument('--output',type=Path,default=ROOT/'build/EvidenceGenesis-Windows-v0.2.0.zip')
+ parser=argparse.ArgumentParser();parser.add_argument('--cache',type=Path,default=ROOT/'build/tools');parser.add_argument('--godot',type=Path);parser.add_argument('--model',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--package-only',action='store_true');parser.add_argument('--output',type=Path,default=ROOT/'build/EvidenceGenesis-Windows-v0.3.0.zip')
  args=parser.parse_args();cache=args.cache;folder=ROOT/'build/windows';folder.mkdir(parents=True,exist_ok=True)
  if not args.package_only:
   godot=args.godot

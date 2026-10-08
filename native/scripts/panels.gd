@@ -79,15 +79,33 @@ func send_chat():
 	game.brain.generate(game.state.actor().duplicate(true),"Conversation",text,true)
 	game.toast("Your companion is thinking…")
 
+func missions():
+	var box=game.panel("The workshop mission board")
+	box.add_child(GenesisUI.label("Small lessons. Useful work. A world that grows with you.",15))
+	var complete=game.state.data.progress.claims.size()
+	box.add_child(GenesisUI.label(str(complete)+" / 6 rewards collected",13,GenesisUI.MUTED))
+	for mission in game.state.missions():
+		var card=PanelContainer.new();var body=VBoxContainer.new();card.add_child(body);box.add_child(card)
+		body.add_child(GenesisUI.label(mission.title,19))
+		body.add_child(GenesisUI.label(mission.description,14))
+		var reward=str(mission.stars)+" skill stars" if mission.stars>0 else str(mission.berries)+" berries"
+		var claimed=mission.id in game.state.data.progress.claims
+		var button=GenesisUI.button("Collected" if claimed else "Collect · "+reward,func():
+			game.toast(game.state.claim_mission(mission.id));game.refresh_hud();missions(),mission.ready and not claimed)
+		button.disabled=claimed or not mission.ready;body.add_child(button)
+	box.add_child(GenesisUI.button("Open Workshop upgrades",game.garden_panel))
+
 func garden():
-	var box=game.panel("A little room to grow")
-	box.add_child(GenesisUI.label("Earn skill stars by reviewing documents. Spend two stars to add a flower garden to the meadow.",16))
-	box.add_child(GenesisUI.button("Plant a flower garden · 2 stars",func():
-		if game.state.data.garden:game.toast("Your garden is already growing.");return
-		if int(game.state.data.stars)<2:game.toast("Create and approve two documents first.");return
-		game.state.data.stars-=2;game.state.data.garden=true;game.state.save();game.refresh_hud();game.toast("Your first flower garden is growing!"),true))
+	var box=game.panel("Build your little workshop")
+	box.add_child(GenesisUI.label("Spend earned skill stars on permanent additions. Your upgrades stay with your save.",16))
+	for item in [["garden","Flower garden",2],["lanterns","Evening lanterns",3],["reading_corner","Outdoor reading corner",4]]:
+		var owned=bool(game.state.data.garden) if item[0]=="garden" else bool(game.state.data.decor[item[0]])
+		var button=GenesisUI.button(item[1]+(" · Built" if owned else " · "+str(item[2])+" stars"),func():
+			game.toast(game.state.buy_upgrade(item[0]));game.refresh_hud();game.world.queue_redraw();garden(),not owned)
+		button.disabled=owned;box.add_child(button)
 	box.add_child(GenesisUI.button("Gather berries",func():game.toast(game.state.harvest());game.refresh_hud()))
 	box.add_child(GenesisUI.button("Feed your companion",func():game.toast(game.state.feed());game.refresh_hud()))
+	box.add_child(GenesisUI.button("Open mission board",missions))
 	box.add_child(GenesisUI.button("Read the workshop journal",func():
 		var journal=game.panel("Life in the workshop")
 		for entry in game.state.data.journal:journal.add_child(GenesisUI.label(entry.text,15))))
@@ -111,7 +129,7 @@ func export_selected(path: String):
 		if input==null or input.get_length()>1500000:game.toast("Backup unreadable or too large.");return
 		var parsed=JSON.parse_string(input.get_as_text());input.close()
 		if not game.state.valid(parsed):game.toast("Invalid backup. Your current workshop is unchanged.");return
-		game.state.data=parsed;game.state.save_enabled=true;game.state.save();game.world.setup(game.state);game.refresh_hud();game.close_panel();game.toast("Workshop restored.");return
+		game.state.adopt(parsed);game.state.save_enabled=true;game.state.save();game.world.setup(game.state);game.refresh_hud();game.close_panel();game.toast("Workshop restored.");return
 	var file=FileAccess.open(path,FileAccess.WRITE)
 	if file==null:game.toast("Could not write to that folder. Choose another location.");return
 	file.store_string(game.file_content);file.close();game.toast("Saved: "+path.get_file())

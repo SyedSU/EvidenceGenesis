@@ -107,3 +107,25 @@ func companion(pos: Vector2, index: int, selected: bool, walking: bool, action: 
 	if selected:
 		var float_y=sin(art_time*3)*3
 		poly([p+Vector2(-5,-86+float_y),p+Vector2(5,-86+float_y),p+Vector2(0,-79+float_y)],"e6ce89")
+
+func lantern(pos: Vector2, night: bool):
+	var p=iso(pos,12)
+	if night:
+		oval(p+Vector2(0,-32),Vector2(44,31),Color("eccf7130"))
+		oval(p+Vector2(0,-32),Vector2(26,22),Color("f3d99535"))
+	pixel(p.x-3,p.y-64,6,66,"625441")
+	pixel(p.x-14,p.y-57,28,5,"625441")
+	pixel(p.x-11,p.y-52,22,22,"efd88e" if night else "c7ba83")
+	pixel(p.x-12,p.y-53,3,25,"625441");pixel(p.x+9,p.y-53,3,25,"625441")
+	pixel(p.x-13,p.y-31,26,5,"625441")
+	pixel(p.x-2,p.y-48,4,14,"fff2bb")
+
+func reading_corner(pos: Vector2):
+	# Flat picnic blanket and cushions leave the meadow walkable.
+	poly([iso(pos,13),iso(pos+Vector2(2.1,0),13),iso(pos+Vector2(2.1,1.6),13),iso(pos+Vector2(0,1.6),13)],"b98567")
+	poly([iso(pos+Vector2(.12,.12),14),iso(pos+Vector2(1.98,.12),14),iso(pos+Vector2(1.98,1.48),14),iso(pos+Vector2(.12,1.48),14)],"dcba8e")
+	box(pos+Vector2(.2,.2),Vector2(.55,.55),18,"95b09c","6c8d7a","597665")
+	box(pos+Vector2(1.15,.75),Vector2(.55,.55),18,"cf9a7d","ac785f","8b614d")
+	box(pos+Vector2(.9,.35),Vector2(.55,.4),17,"f1e4bd","c8b793","aa9b7d")
+	var p=iso(pos+Vector2(1.1,.45),18)
+	pixel(p.x-8,p.y-1,16,2,"789982");pixel(p.x-6,p.y+3,12,2,"a4b199")

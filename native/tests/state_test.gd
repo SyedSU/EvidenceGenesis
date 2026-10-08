@@ -20,16 +20,53 @@ func _initialize():
 	assert(restored.valid(restored.data))
 	assert(restored.data.documents[0].content==doc.content)
 	assert(restored.data.crew[0].lessons[0].value=="bullets")
-	var invalid=state.data.duplicate(true);invalid.crew[0].energy=-1
+	var invalid=state.data.duplicate(true);invalid.version=true
+	assert(not state.valid(invalid))
+	invalid=state.data.duplicate(true);invalid.crew[0].energy=-1
 	assert(not state.valid(invalid))
 	invalid=state.data.duplicate(true);invalid.documents[0].actor=7
 	assert(not state.valid(invalid))
 	invalid=state.data.duplicate(true);invalid.crew[1].lessons=[{"bad":"data"}]
 	assert(not state.valid(invalid))
+	# Old native saves migrate without changing lessons, documents or rewards.
+	var legacy=state.data.duplicate(true);legacy.version=2;legacy.erase("progress");legacy.erase("decor")
+	assert(state.valid(legacy))
+	var legacy_file=FileAccess.open(GenesisState.SAVE,FileAccess.WRITE)
+	legacy_file.store_string(JSON.stringify(legacy));legacy_file.close()
+	var migrated=GenesisState.new();migrated.load_save()
+	assert(migrated.data.version==3 and migrated.valid(migrated.data))
+	assert(migrated.data.documents[0].content==doc.content)
+	assert(migrated.data.crew[0].approved==1)
+	assert(migrated.data.progress.claims.is_empty())
+	# Mission rewards require real milestones and cannot be farmed.
+	var journey=GenesisState.new();journey.save_enabled=false
+	journey.claim_mission("approval");assert(journey.data.stars==0)
+	journey.teach("vocabulary","hello","a greeting")
+	journey.claim_mission("lesson");assert(journey.data.berries==7)
+	journey.claim_mission("lesson");assert(journey.data.berries==7)
+	journey.feed();journey.rest(0)
+	assert(journey.data.progress.fed==1 and journey.data.progress.rested==1)
+	journey.claim_mission("care");assert("care" in journey.data.progress.claims)
+	for i in 3:
+		var made=journey.deliver("Practice","A useful draft","Template",0);journey.approve(made)
+	assert(journey.level(0)==2)
+	journey.claim_mission("approval");assert(journey.data.stars==4)
+	journey.claim_mission("team");assert("team" not in journey.data.progress.claims)
+	var partner=journey.deliver("Review","Checked draft","Template",1);journey.approve(partner)
+	journey.claim_mission("team");assert(journey.data.stars==7)
+	journey.buy_upgrade("garden");assert(journey.data.garden and journey.data.stars==5)
+	journey.buy_upgrade("garden");assert(journey.data.stars==5)
+	journey.buy_upgrade("lanterns");assert(journey.data.decor.lanterns and journey.data.stars==2)
+	journey.buy_upgrade("reading_corner");assert(not journey.data.decor.reading_corner)
+	journey.data.stars=4;journey.buy_upgrade("reading_corner")
+	assert(journey.data.decor.reading_corner and journey.data.stars==0)
+	assert(journey.valid(JSON.parse_string(JSON.stringify(journey.data))))
+	invalid=journey.data.duplicate(true);invalid.progress.claims=["care","care"]
+	assert(not journey.valid(invalid))
 	var file=FileAccess.open(GenesisState.SAVE,FileAccess.WRITE)
 	file.store_string("invalid original save");file.close()
 	restored.load_save();assert(not restored.save_enabled)
 	assert(not restored.save())
 	assert(FileAccess.get_file_as_string(GenesisState.SAVE)=="invalid original save")
-	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, save round-trip, corrupt-save preservation")
+	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, saves, v2 migration, mission rewards, care, upgrades, levels")
 	quit()

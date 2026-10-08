@@ -11,6 +11,7 @@ var notebook: GenesisNotebook
 var hud_name: Label
 var hud_stats: Label
 var hud_quest: Label
+var crew_buttons: Array=[]
 var hud_ai: Label
 var message: Label
 var audio: AudioStreamPlayer
@@ -56,8 +57,9 @@ func build_hud():
 	brand.add_child(GenesisUI.label("evidence genesis",25));brand.add_child(GenesisUI.label("THE FIRST LITTLE WORLD",10,GenesisUI.MUTED))
 	var info=VBoxContainer.new();info.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(info)
 	hud_name=GenesisUI.label("",18);hud_stats=GenesisUI.label("",12,GenesisUI.MUTED);info.add_child(hud_name);info.add_child(hud_stats)
-	row.add_child(GenesisUI.button("Milo",func():select_actor(0)))
-	row.add_child(GenesisUI.button("Pip",func():select_actor(1)))
+	for index in 2:
+		var crew_button=GenesisUI.button(state.data.crew[index].name,func():select_actor(index))
+		crew_buttons.append(crew_button);row.add_child(crew_button)
 	row.add_child(GenesisUI.button("Settings",settings_panel))
 	var quest=PanelContainer.new();quest.position=Vector2(24,115);quest.custom_minimum_size=Vector2(272,110);ui.add_child(quest)
 	var qbox=VBoxContainer.new();quest.add_child(qbox);qbox.add_child(GenesisUI.label("CHAPTER ONE / A FIRST SPARK",10,GenesisUI.MUTED))
@@ -67,20 +69,23 @@ func build_hud():
 	message.position=Vector2(280,586);message.size=Vector2(720,42);message.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;ui.add_child(message)
 	var dock=PanelContainer.new();dock.position=Vector2(140,640);dock.size=Vector2(1000,60);ui.add_child(dock)
 	var buttons=HBoxContainer.new();buttons.alignment=BoxContainer.ALIGNMENT_CENTER;dock.add_child(buttons)
-	for item in [["Teach",func():notebook.teach_panel()],["Memory",func():notebook.memory_panel()],["Create",func():notebook.task_panel()],["Talk",chat_panel],["Documents",documents_panel],["Interact [E]",func():interaction(world.nearest())]]:
+	for item in [["Missions",missions_panel],["Teach",func():notebook.teach_panel()],["Memory",func():notebook.memory_panel()],["Create",func():notebook.task_panel()],["Talk",chat_panel],["Documents",documents_panel],["Workshop",garden_panel]]:
 		buttons.add_child(GenesisUI.button(item[0],item[1],item[0]=="Create"))
 	file_dialog=FileDialog.new();file_dialog.access=FileDialog.ACCESS_FILESYSTEM;file_dialog.use_native_dialog=true
 	file_dialog.file_selected.connect(export_selected);ui.add_child(file_dialog)
 
 func refresh_hud():
 	if hud_name==null:return
-	hud_name.text=state.actor().name+" · "+state.actor().role
+	hud_name.text=state.actor().name+" · "+state.actor().role+" · Lv "+str(state.level(int(state.data.selected)))
+	for i in 2:crew_buttons[i].text=state.data.crew[i].name
 	hud_stats.text="Energy "+str(int(state.actor().energy))+"/100    Berries "+str(int(state.data.berries))+"    Skill stars "+str(int(state.data.stars))+"    Approved "+str(int(state.actor().approved))
 	hud_ai.text=brain.status
-	if state.actor().lessons.is_empty():hud_quest.text="1. Teach your companion a first lesson."
-	elif state.data.documents.is_empty():hud_quest.text="2. Turn a few notes into a document."
-	elif int(state.data.stars)==0:hud_quest.text="3. Review and approve your creation."
-	else:hud_quest.text="A first spark! Keep teaching, creating and growing."
+	var next="Every mission complete! Build your workshop and keep creating."
+	for mission in state.missions():
+		if mission.id not in state.data.progress.claims:
+			next=("Reward ready: " if mission.ready else "Next: ")+mission.title
+			break
+	hud_quest.text=next+"\nOpen Missions to see your goals."
 
 func panel(title: String) -> VBoxContainer:
 	close_panel()
@@ -114,7 +119,7 @@ func interaction(kind: String):
 			world.actions[resting]="Resting";world.go(resting,Vector2(8.2,8.8))
 			toast(state.actor().name+" is taking a rest…")
 			await get_tree().create_timer(3).timeout
-			state.data.crew[resting].energy=mini(100,int(state.data.crew[resting].energy)+30);world.actions[resting]="Idle";state.save();refresh_hud();toast("Rest restored 30 energy.")
+			state.rest(resting);world.actions[resting]="Idle";refresh_hud();toast("Rest restored 30 energy.")
 		"bush":toast(state.harvest());refresh_hud()
 		"plant":garden_panel()
 		"lamp":state.data.night=not state.data.night;state.save();toast("Evening light." if state.data.night else "Morning light.")
@@ -129,7 +134,9 @@ func _process(delta):
 		screenshot_frames+=1
 		if screenshot_frames==90:
 			close_panel()
-			if "--capture-panel" in OS.get_cmdline_user_args():notebook.task_panel()
+			if "--capture-panel" in OS.get_cmdline_user_args():missions_panel()
+			if "--capture-upgrades" in OS.get_cmdline_user_args():
+				state.data.garden=true;state.data.decor.lanterns=true;state.data.decor.reading_corner=true;state.data.night=true;world.queue_redraw()
 			await get_tree().process_frame
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(OS.get_environment("GENESIS_CAPTURE_PATH"))
@@ -148,7 +155,7 @@ func welcome_panel():
 	box.add_child(GenesisUI.label("A companion. A lesson. A possibility.",25))
 	box.add_child(GenesisUI.label("Choose Milo or Pip. Walk with WASD, arrow keys, or a click on the ground. Press E near furniture to interact.",16))
 	box.add_child(GenesisUI.label("The bookshelf opens lessons. The desk creates documents. The bed restores energy. The berry bush replenishes your basket.",16))
-	box.add_child(GenesisUI.label("The included local model starts automatically. You can use template mode while it loads. No paid AI service is required.",15))
+	box.add_child(GenesisUI.label("Open Missions for goals and rewards. Workshop lets you add a flower garden, lanterns and a reading corner. The included local model starts automatically. You can use template mode while it loads. No paid AI service is required.",15))
 	box.add_child(GenesisUI.button("Begin our adventure",func():state.data.seen_intro=true;state.save();close_panel(),true))
 
 func ai_finished(content: String, error: String):
@@ -172,7 +179,7 @@ func smoke_test():
 	var doc=state.deliver("Smoke check",state.template("Smoke check","One\nTwo"),"Template",0)
 	var before=int(state.data.stars);state.approve(doc);state.approve(doc);assert(int(state.data.stars)==before+1)
 	assert(state.valid(state.data))
-	notebook.teach_panel();notebook.memory_panel();notebook.task_panel();documents_panel();document_panel(doc);settings_panel();chat_panel();garden_panel();close_panel()
+	notebook.teach_panel();notebook.memory_panel();notebook.task_panel();missions_panel();documents_panel();document_panel(doc);settings_panel();chat_panel();garden_panel();close_panel()
 	print("GENESIS_NATIVE_SMOKE_OK")
 	await get_tree().create_timer(.3).timeout
 	get_tree().quit()
@@ -182,6 +189,7 @@ func document_panel(doc: Dictionary):panels.document(doc)
 func settings_panel():panels.settings()
 func chat_panel():panels.chat()
 func garden_panel():panels.garden()
+func missions_panel():panels.missions()
 func choose_export(kind: String):panels.choose_export(kind)
 func export_selected(path: String):panels.export_selected(path)
 

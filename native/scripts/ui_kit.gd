@@ -17,6 +17,7 @@ static func theme() -> Theme:
 	t.set_color("font_color","Label",INK)
 	t.set_color("font_color","Button",INK)
 	t.set_color("font_hover_color","Button",INK)
+	t.set_color("font_disabled_color","Button",MUTED)
 	t.set_stylebox("normal","Button",style(Color("e3e8d0")))
 	t.set_stylebox("hover","Button",style(Color("d5e4b9")))
 	t.set_stylebox("pressed","Button",style(Color("bfce9b")))
