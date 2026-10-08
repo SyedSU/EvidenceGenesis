@@ -7,3 +7,10 @@ models/
 *.gguf
 captures/
 test-results/
+
+build/
+native/.godot/
+*.import
+*.exe
+*.dll
+*.tmp-*

@@ -1,0 +1,25 @@
+name: Native Windows game
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['native/**', 'scripts/build_native.py', '.github/workflows/native-game.yml']
+  push:
+    branches: ['feat/native-game']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and test the Windows game and bundled AI
+        run: python scripts/build_native.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceGenesis-Windows-v0.2.0
+          path: build/EvidenceGenesis-Windows-v0.2.0.zip
+          retention-days: 30

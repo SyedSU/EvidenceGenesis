@@ -1,0 +1,35 @@
+extends SceneTree
+
+func _initialize():
+	var state=GenesisState.new()
+	assert(state.valid(state.data))
+	assert(state.teach("preference","format","numbered steps"))
+	assert(state.teach("preference","FORMAT","bullets"))
+	assert(state.actor().lessons.size()==1)
+	assert(state.template("Example","One\nTwo").contains("- One"))
+	assert(not state.teach("instruction","","bad"))
+	var doc=state.deliver("Check","# Hello\n<script>alert(1)</script>","Template",0)
+	state.approve(doc);state.approve(doc)
+	assert(state.data.stars==1 and state.actor().approved==1)
+	doc.accepted=false;state.approve(doc);assert(state.data.stars==1)
+	var html=GenesisDocuments.html(doc)
+	assert(not html.contains("<script>"))
+	assert(html.contains("&lt;script&gt;"))
+	assert(state.save())
+	var restored=GenesisState.new();restored.load_save()
+	assert(restored.valid(restored.data))
+	assert(restored.data.documents[0].content==doc.content)
+	assert(restored.data.crew[0].lessons[0].value=="bullets")
+	var invalid=state.data.duplicate(true);invalid.crew[0].energy=-1
+	assert(not state.valid(invalid))
+	invalid=state.data.duplicate(true);invalid.documents[0].actor=7
+	assert(not state.valid(invalid))
+	invalid=state.data.duplicate(true);invalid.crew[1].lessons=[{"bad":"data"}]
+	assert(not state.valid(invalid))
+	var file=FileAccess.open(GenesisState.SAVE,FileAccess.WRITE)
+	file.store_string("invalid original save");file.close()
+	restored.load_save();assert(not restored.save_enabled)
+	assert(not restored.save())
+	assert(FileAccess.get_file_as_string(GenesisState.SAVE)=="invalid original save")
+	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, save round-trip, corrupt-save preservation")
+	quit()
