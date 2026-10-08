@@ -1,10 +1,12 @@
 name: Native Windows game
 on:
   workflow_dispatch:
-  pull_request:
-    paths: ['native/**', 'scripts/build_native.py', '.github/workflows/native-game.yml']
   push:
     branches: ['feat/native-game']
+    paths: ['native/**', 'scripts/build_native.py', '.github/workflows/native-game.yml']
+concurrency:
+  group: native-game-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

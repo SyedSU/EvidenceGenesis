@@ -12,6 +12,12 @@ required. AI speed depends on your CPU; this is a small CPU model.
 Allow roughly 2 GB of free disk space while extracting. We have not
 measured minimum RAM on your particular laptop. Template mode remains
 available while the model starts or if your computer cannot run it.
+On a fresh Windows installation, the AI also needs Microsoft's C++
+x64 runtime. If the game requests it, open Settings > Download Microsoft
+AI support, install the official Microsoft download, then restart.
+Official link: https://aka.ms/vc14/vc_redist.x64.exe
+This one-time prerequisite needs internet to download and Windows may
+request administrator approval. It is not Unity or a development editor.
 This independent preview is not code-signed.
 
 PLAY

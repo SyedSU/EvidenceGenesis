@@ -6,7 +6,7 @@ A native 2.5D companion game for Windows. Walk around a little workshop, care fo
 
 Extract the entire `EvidenceGenesis-Windows-v0.2.0.zip`, open its `EvidenceGenesis` folder, and double-click `EvidenceGenesis.exe`. Keep `brain/` and `model/` beside the executable. No Unity, Python, editor, account, or API key is required on the player's computer.
 
-Windows 10/11 x64 and OpenGL 3.3 graphics are required. AI speed depends on CPU and available memory; minimum hardware has not been benchmarked. The package uses a small CPU model and offers clearly labeled template mode. The preview executable is unsigned.
+Windows 10/11 x64 and OpenGL 3.3 graphics are required. AI speed depends on CPU and available memory; minimum hardware has not been benchmarked. The package uses a small CPU model and offers clearly labeled template mode. The preview executable is unsigned. On a fresh Windows installation, the AI may require Microsoft’s C++ x64 runtime. If missing, the game provides an official Microsoft download link in Settings; install it once and restart. That setup download requires internet.
 
 WASD/arrows or click: move. E: interact. Tab: switch companions. Escape: close a panel or settings. Teach → Create → Review → Approve is the first quest. Use Settings to rename companions, assign roles, feed berries, change lighting and music, or back up and restore the workshop. Approved documents earn skill stars; two stars unlock a flower garden.
 

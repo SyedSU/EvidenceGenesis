@@ -47,6 +47,9 @@ func settings():
 		game.state.save()))
 	box.add_child(GenesisUI.button("Fullscreen / window",func():DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)))
 	box.add_child(GenesisUI.label(game.brain.status,13,GenesisUI.MUTED))
+	if game.brain.needs_runtime:
+		box.add_child(GenesisUI.label("Install the official Microsoft x64 runtime once, then restart this game. The setup download needs internet. Your companions and template mode work while AI is unavailable.",14))
+		box.add_child(GenesisUI.button("Download Microsoft AI support",func():OS.shell_open(GenesisBrain.SUPPORT_URL),true))
 	box.add_child(GenesisUI.button("Download save backup",func():game.choose_export("backup")))
 	box.add_child(GenesisUI.button("Restore a backup",func():game.choose_export("restore")))
 	box.add_child(GenesisUI.button("Open save folder",func():OS.shell_open(ProjectSettings.globalize_path("user://"))))

@@ -62,7 +62,7 @@ func build_hud():
 	var quest=PanelContainer.new();quest.position=Vector2(24,115);quest.custom_minimum_size=Vector2(272,110);ui.add_child(quest)
 	var qbox=VBoxContainer.new();quest.add_child(qbox);qbox.add_child(GenesisUI.label("CHAPTER ONE / A FIRST SPARK",10,GenesisUI.MUTED))
 	hud_quest=GenesisUI.label("",15);qbox.add_child(hud_quest)
-	hud_ai=GenesisUI.label("",11,GenesisUI.MUTED);hud_ai.custom_minimum_size.x=260;hud_ai.position=Vector2(24,238);ui.add_child(hud_ai)
+	hud_ai=GenesisUI.label("",11,GenesisUI.PAPER);hud_ai.custom_minimum_size.x=260;hud_ai.position=Vector2(24,238);ui.add_child(hud_ai)
 	message=GenesisUI.label("Click to walk · WASD / arrows · E to interact · Tab to switch",15,GenesisUI.PAPER)
 	message.position=Vector2(280,586);message.size=Vector2(720,42);message.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;ui.add_child(message)
 	var dock=PanelContainer.new();dock.position=Vector2(140,640);dock.size=Vector2(1000,60);ui.add_child(dock)

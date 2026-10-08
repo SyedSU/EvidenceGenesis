@@ -14,6 +14,8 @@ var check: HTTPRequest
 var request: HTTPRequest
 var attempts=0
 var enabled=true
+var needs_runtime=false
+const SUPPORT_URL="https://aka.ms/vc14/vc_redist.x64.exe"
 
 func _ready():
 	check=HTTPRequest.new();check.timeout=3;add_child(check)
@@ -31,6 +33,11 @@ func start():
 	if not OS.get_environment("GENESIS_MODEL_PATH").is_empty():model=OS.get_environment("GENESIS_MODEL_PATH")
 	if not FileAccess.file_exists(executable) or not FileAccess.file_exists(model):
 		status="AI files missing. Keep the brain and model folders beside the game.";status_changed.emit(status);return
+	if OS.get_name()=="Windows":
+		var system=OS.get_environment("SystemRoot").replace("\\","/").path_join("System32")
+		for dependency in ["vcruntime140.dll","vcruntime140_1.dll","msvcp140.dll"]:
+			if not FileAccess.file_exists(system.path_join(dependency)) and not FileAccess.file_exists(executable.get_base_dir().path_join(dependency)):
+				needs_runtime=true;status="AI needs Microsoft runtime support. Open Settings to install it, then restart.";status_changed.emit(status);return
 	var socket=TCPServer.new()
 	for candidate in range(49162,49262):
 		if socket.listen(candidate,"127.0.0.1")==OK:port=candidate;socket.stop();break
