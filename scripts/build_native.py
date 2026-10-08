@@ -29,10 +29,12 @@ def digest(path):
   for chunk in iter(lambda: stream.read(1024*1024),b''):h.update(chunk)
  return h.hexdigest()
 
-def run_game(executable, args, marker=None):
+def run_game(executable, args, marker=None, isolated=True):
  with tempfile.TemporaryDirectory(prefix='genesis-test-') as temp:
-  env=os.environ.copy();env['XDG_DATA_HOME']=temp
-  if os.name=='nt':env['APPDATA']=temp
+  env=os.environ.copy()
+  if isolated:
+   env['XDG_DATA_HOME']=temp
+   if os.name=='nt':env['APPDATA']=temp
   log=Path(temp)/'game.log'
   result=subprocess.run([str(executable),'--headless','--log-file',str(log),*args],env=env,text=True,capture_output=True,timeout=240)
   output=result.stdout+result.stderr+(log.read_text(encoding='utf-8',errors='replace') if log.exists() else '')
@@ -69,9 +71,9 @@ def main():
   target=base/'export_templates/4.7.2.stable';target.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(templates) as z:
    for name in ['windows_release_x86_64.exe','windows_debug_x86_64.exe','version.txt']:(target/name).write_bytes(z.read('templates/'+name))
-  run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'])
+  run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'],isolated=False)
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/state_test.gd'],'GENESIS_STATE_TEST_OK')
-  run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')])
+  run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')],isolated=False)
   runtime=args.runtime or download(f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip',cache/'llama-win.zip')
   with zipfile.ZipFile(runtime) as z:z.extractall(folder/'brain')
   model=args.model or download(MODEL_URL,cache/'genesis.gguf')
