@@ -4,7 +4,7 @@ A native 2.5D companion game for Windows. Walk around a little workshop, care fo
 
 ## Play the packaged game
 
-Extract the entire `EvidenceGenesis-Windows-v0.3.0.zip`, open its `EvidenceGenesis` folder, and double-click `EvidenceGenesis.exe`. Keep `brain/` and `model/` beside the executable. No Unity, Python, editor, account, or API key is required on the player's computer.
+Extract the entire `EvidenceGenesis-Windows-v0.4.0.zip`, open its `EvidenceGenesis` folder, and double-click `EvidenceGenesis.exe`. Keep `brain/` and `model/` beside the executable. No Unity, Python, editor, account, or API key is required on the player's computer.
 
 Windows 10/11 x64 and OpenGL 3.3 graphics are required. AI speed depends on CPU and available memory; minimum hardware has not been benchmarked. The package uses a small CPU model and offers clearly labeled template mode. The preview executable is unsigned. On a fresh Windows installation, the AI may require Microsoft’s C++ x64 runtime. If missing, the game provides an official Microsoft download link in Settings; install it once and restart. That setup download requires internet.
 
@@ -12,7 +12,11 @@ WASD/arrows or click: move. E: interact. Tab: switch companions. Escape: close a
 
 Markdown and printable HTML export are implemented. HTML can be printed to PDF through the operating system's browser print dialog. Direct PDF generation is not implemented.
 
-## Version 0.3 gameplay
+## Version 0.4 gameplay
+
+The native main menu offers Continue, New Workshop, Settings, Credits and Exit. Named workshops isolate companions, memory, documents and rewards. Import legacy workshops explicitly; the original `workshop.json` and backup are preserved. Profile payloads use version 4 and distribution compatibility epoch `saveSchema=4`; older releases cannot open the new profiles. Saves are in `profiles/<id>.json`, indexed by `profiles.json` inside the platform EvidenceGenesis directory. A corrupt profile/index is preserved rather than silently replaced.
+
+Document task history records queued, running, completed, failed and canceled work. Interrupted work becomes failed, retains source notes and requires intentional retry. No recovery automatically awards rewards. Settings provide music volume, standard/large UI text independent from the pixel world, fullscreen and reduced ambient motion. Keyboard remapping and direct PDF generation remain unavailable.
 
 The mission board tracks six milestones: teaching, first delivery, first approval, feeding and rest, approved work from both companions, and planting a garden. Rewards can be collected once. Workshop upgrades include a flower garden, glowing evening lanterns and a picnic reading corner. Companion levels increase every three approved documents. Existing version 0.2 saves migrate automatically; companion names now update on the selection buttons.
 

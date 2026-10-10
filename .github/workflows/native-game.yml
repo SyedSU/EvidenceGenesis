@@ -2,7 +2,7 @@ name: Native Windows game
 on:
   workflow_dispatch:
   push:
-    branches: ['feat/native-game']
+    branches: ['feat/native-game', 'feat/workshop-profiles']
     paths: ['native/**', 'scripts/build_native.py', '.github/workflows/native-game.yml']
 concurrency:
   group: native-game-${{ github.ref }}
@@ -22,6 +22,6 @@ jobs:
         run: python scripts/build_native.py
       - uses: actions/upload-artifact@v4
         with:
-          name: EvidenceGenesis-Windows-v0.3.0
-          path: build/EvidenceGenesis-Windows-v0.3.0.zip
+          name: EvidenceGenesis-Windows-v0.4.0
+          path: build/EvidenceGenesis-Windows-v0.4.0.zip
           retention-days: 30

@@ -57,11 +57,20 @@ func submit():
 	if title.is_empty() or notes.is_empty() or notes.length()>4000:game.toast("Add a title and source notes up to 4,000 characters.");return
 	if int(game.state.actor().energy)<8:game.toast("Your companion needs a berry or a rest first.");return
 	if mode.selected==1:
+		var task=game.state.queue_task(title,notes,int(game.state.data.selected),"Template")
+		if task.is_empty():game.toast(game.state.last_error);return
+		if not game.state.task_status(task.id,"running"):game.toast(game.state.last_error);return
 		var content=game.state.template(title,notes)
-		var doc=game.state.deliver(title,content,"Template",int(game.state.data.selected));game.refresh_hud();game.document_panel(doc);return
+		var doc=game.state.deliver(title,content,"Template",int(game.state.data.selected))
+		if doc.is_empty():game.toast(game.state.last_error);return
+		if not game.state.task_status(task.id,"completed","",doc.id):game.toast(game.state.last_error);return
+		game.refresh_hud();game.document_panel(doc);return
 	if not game.brain.available:game.toast(game.brain.status);return
 	run_button.disabled=true
-	game.pending={"kind":"document","title":title,"notes":notes,"actor":int(game.state.data.selected)}
+	var task=game.state.queue_task(title,notes,int(game.state.data.selected),"Local AI")
+	if task.is_empty():game.toast(game.state.last_error);return
+	if not game.state.task_status(task.id,"running"):game.toast(game.state.last_error);return
+	game.pending={"id":task.id,"kind":"document","title":title,"notes":notes,"actor":int(game.state.data.selected)}
 	game.world.actions[int(game.state.data.selected)]="Working"
 	game.world.go(int(game.state.data.selected),Vector2(7.5,5.8));game.world.paused=false
 	game.toast(game.state.actor().name+" is working on your document…")

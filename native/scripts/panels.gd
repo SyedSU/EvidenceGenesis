@@ -18,7 +18,9 @@ func document(doc: Dictionary):
 	game.document_editor=GenesisUI.area("",250);game.document_editor.text=doc.content;box.add_child(game.document_editor)
 	box.add_child(GenesisUI.button("Save edits",func():if save_edits():game.toast("Edits saved.")))
 	box.add_child(GenesisUI.button("Approve & award skill star",func():
-		if save_edits():game.state.approve(doc);game.refresh_hud();document(doc);game.toast("Approved. Each document earns one skill star."),true))
+		if save_edits():
+			var approved=game.state.approve(doc);game.refresh_hud();document(doc)
+			game.toast("Approved. Each document earns one skill star." if approved else game.state.last_error),true))
 	box.add_child(GenesisUI.button("Export Markdown",func():if save_edits():game.choose_export("document-md")))
 	box.add_child(GenesisUI.button("Export printable HTML",func():if save_edits():game.choose_export("document-html")))
 	box.add_child(GenesisUI.label("Open exported HTML in your browser and use Print → Save as PDF. This build does not silently install a PDF printer.",12,GenesisUI.MUTED))
@@ -26,11 +28,22 @@ func document(doc: Dictionary):
 func save_edits() -> bool:
 	var text=game.document_editor.text
 	if text.strip_edges().is_empty() or text.length()>20000:game.toast("Document must contain between 1 and 20,000 characters.");return false
+	var previous=game.current_document.duplicate(true)
 	if text!=game.current_document.content:game.current_document.content=text;game.current_document.accepted=false
-	game.state.save();return true
+	if not game.state.save():
+		game.current_document.clear();game.current_document.merge(previous,true);game.toast(game.state.last_error);return false
+	return true
 
 func settings():
 	var box=game.panel("Make this world yours")
+	box.add_child(GenesisUI.label("Document maker turns notes into drafts; Reviewer identifies gaps. Energy is spent only on delivered work. Every three approvals earns a level; levels describe practice, not model training.",14))
+	var volume=HSlider.new();volume.min_value=0;volume.max_value=1;volume.step=0.05;volume.value=game.state.data.settings.volume
+	GenesisUI.field(box,"Music volume",volume)
+	volume.value_changed.connect(func(value):game.state.data.settings.volume=value;game.apply_settings();game.state.save())
+	var text=OptionButton.new();text.add_item("Standard text");text.add_item("Large text");text.select(1 if game.state.data.settings.text_scale>1 else 0);box.add_child(text)
+	text.item_selected.connect(func(index):game.state.data.settings.text_scale=1.15 if index==1 else 1.0;game.apply_settings();game.state.save();settings())
+	box.add_child(GenesisUI.button("Reduce ambient motion / restore",func():game.state.data.settings.motion=not game.state.data.settings.motion;game.state.save()))
+	box.add_child(GenesisUI.label("Controls: WASD/arrows or click to move · E interact · Tab switch · Escape close panel. Keyboard movement and click are both available; remapping is not implemented.",13))
 	var name=GenesisUI.input("Companion name",24);name.text=game.state.actor().name
 	var role=OptionButton.new();role.add_item("Document maker");role.add_item("Reviewer");role.custom_minimum_size.y=44
 	role.select(0 if game.state.actor().role=="Document maker" else 1)
@@ -45,7 +58,7 @@ func settings():
 		if game.state.data.sound:game.audio.play()
 		else:game.audio.stop()
 		game.state.save()))
-	box.add_child(GenesisUI.button("Fullscreen / window",func():DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)))
+	box.add_child(GenesisUI.button("Fullscreen / window",func():game.state.data.settings.fullscreen=not game.state.data.settings.fullscreen;game.apply_settings();game.state.save()))
 	box.add_child(GenesisUI.label(game.brain.status,13,GenesisUI.MUTED))
 	if game.brain.needs_runtime:
 		box.add_child(GenesisUI.label("Install the official Microsoft x64 runtime once, then restart this game. The setup download needs internet. Your companions and template mode work while AI is unavailable.",14))
@@ -53,7 +66,7 @@ func settings():
 	box.add_child(GenesisUI.button("Download save backup",func():game.choose_export("backup")))
 	box.add_child(GenesisUI.button("Restore a backup",func():game.choose_export("restore")))
 	box.add_child(GenesisUI.button("Open save folder",func():OS.shell_open(ProjectSettings.globalize_path("user://"))))
-	box.add_child(GenesisUI.button("Return to the workshop",game.close_panel,true))
+	box.add_child(GenesisUI.button("Return",game.main_menu if game.menu_open else game.close_panel,true))
 
 func chat():
 	var box=game.panel("A conversation with "+game.state.actor().name)

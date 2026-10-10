@@ -5,13 +5,14 @@ var data: Dictionary
 var last_error = ""
 var save_enabled = true
 const SAVE = "user://workshop.json"
+var save_path = SAVE
 
 func _init():
 	data = fresh()
 
 func fresh() -> Dictionary:
-	return {"version":3, "selected":0, "berries":5, "stars":0, "night":false, "garden":false,
-		"sound":true, "harvest_at":0, "seen_intro":false, "documents":[], "journal":[], "progress":{"fed":0,"rested":0,"claims":[]},
+	return {"version":4, "selected":0, "berries":5, "stars":0, "night":false, "garden":false,
+		"tasks":[], "settings":{"volume":0.65,"text_scale":1.0,"motion":true,"fullscreen":false}, "sound":true, "harvest_at":0, "seen_intro":false, "documents":[], "journal":[], "progress":{"fed":0,"rested":0,"claims":[]},
 		"decor":{"lanterns":false,"reading_corner":false},
 		"crew":[{"name":"Milo", "role":"Document maker", "energy":80, "approved":0, "lessons":[], "x":5.5, "y":8.2},
 		{"name":"Pip", "role":"Reviewer", "energy":90, "approved":0, "lessons":[], "x":8.2, "y":6.8}]}
@@ -50,19 +51,23 @@ func template(title: String, notes: String) -> String:
 	return content
 
 func deliver(title: String, content: String, mode: String, actor_index: int) -> Dictionary:
+	var previous=data.duplicate(true)
 	var doc={"id":str(Time.get_ticks_usec())+"-"+str(randi()),"title":title,"content":content,"mode":mode,"actor":actor_index,"accepted":false,"credited":false}
 	data.documents.push_front(doc)
 	if data.documents.size()>20: data.documents.resize(20)
 	data.crew[actor_index].energy=maxi(0,int(data.crew[actor_index].energy)-8)
-	event(data.crew[actor_index].name+" delivered “"+title+"”."); save(); return doc
+	event(data.crew[actor_index].name+" delivered “"+title+"”.")
+	if not commit(previous):return {}
+	return doc
 
-func approve(doc: Dictionary):
-	if doc.accepted: return
+func approve(doc: Dictionary) -> bool:
+	if doc.accepted:return true
+	var previous=data.duplicate(true)
 	doc.accepted=true
 	if not doc.credited:
 		doc.credited=true; data.crew[int(doc.actor)].approved+=1; data.stars+=1
 		event("You approved “"+doc.title+"”. A skill star earned.")
-	save()
+	return commit(previous)
 
 func feed() -> String:
 	if int(data.berries)<=0: return "The basket is empty. Visit the berry bush."
@@ -77,18 +82,18 @@ func harvest() -> String:
 
 func save() -> bool:
 	if not save_enabled: return false
-	var file=FileAccess.open(SAVE+".tmp",FileAccess.WRITE)
+	var file=FileAccess.open(save_path+".tmp",FileAccess.WRITE)
 	if file==null: last_error="Save unavailable. Back up your workshop from Settings."; return false
 	file.store_string(JSON.stringify(data,"\t")); file.close()
-	if FileAccess.file_exists(SAVE):
-		DirAccess.copy_absolute(ProjectSettings.globalize_path(SAVE),ProjectSettings.globalize_path(SAVE+".backup"))
-	var result=DirAccess.rename_absolute(ProjectSettings.globalize_path(SAVE+".tmp"),ProjectSettings.globalize_path(SAVE))
+	if FileAccess.file_exists(save_path):
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path),ProjectSettings.globalize_path(save_path+".backup"))
+	var result=DirAccess.rename_absolute(ProjectSettings.globalize_path(save_path+".tmp"),ProjectSettings.globalize_path(save_path))
 	if result!=OK: last_error="Could not save. Back up from Settings."; return false
 	return true
 
 func load_save():
-	if not FileAccess.file_exists(SAVE): return
-	var file=FileAccess.open(SAVE,FileAccess.READ)
+	if not FileAccess.file_exists(save_path): return
+	var file=FileAccess.open(save_path,FileAccess.READ)
 	if file==null or file.get_length()>1500000:
 		last_error="Save unreadable. Original file preserved."; save_enabled=false; return
 	var parser=JSON.new()
@@ -100,7 +105,7 @@ func load_save():
 func valid(s: Variant) -> bool:
 	if not s is Dictionary:return false
 	if not (s.get("version") is int or s.get("version") is float):return false
-	if s.version!=2 and s.version!=3:return false
+	if s.version!=2 and s.version!=3 and s.version!=4:return false
 	if not s.get("crew") is Array or s.crew.size()!=2: return false
 	if not actor_index_ok(s.get("selected")) or not s.get("documents") is Array or s.documents.size()>20: return false
 	for field in ["berries","stars","harvest_at"]:
@@ -124,7 +129,7 @@ func valid(s: Variant) -> bool:
 	for doc in s.documents:
 		if not doc is Dictionary or not text_ok(doc.get("id"),80) or not text_ok(doc.get("title"),120) or not text_ok(doc.get("content"),20000): return false
 		if not actor_index_ok(doc.get("actor")) or doc.get("mode") not in ["Template","Local AI"] or not doc.get("accepted") is bool or not doc.get("credited") is bool: return false
-	if s.version==3:
+	if s.version>=3:
 		if not s.get("progress") is Dictionary or not s.get("decor") is Dictionary:return false
 		for counter in ["fed","rested"]:
 			if not (s.progress.get(counter) is int or s.progress.get(counter) is float) or s.progress[counter]<0:return false
@@ -135,6 +140,13 @@ func valid(s: Variant) -> bool:
 			known.append(claim)
 		for decoration in ["lanterns","reading_corner"]:
 			if not s.decor.get(decoration) is bool:return false
+	if s.version==4:
+		if not s.get("tasks") is Array or s.tasks.size()>60 or not s.get("settings") is Dictionary:return false
+		for task in s.tasks:
+			if not task is Dictionary or task.get("status") not in ["queued","running","completed","failed","canceled"] or not text_ok(task.get("id"),80) or not text_ok(task.get("title"),120) or not text_ok(task.get("notes"),4000) or not actor_index_ok(task.get("actor")) or task.get("mode") not in ["Template","Local AI"] or not text_ok(task.get("error"),500) or not text_ok(task.get("document"),80):return false
+		for key in ["volume","text_scale"]:
+			if not (s.settings.get(key) is int or s.settings.get(key) is float):return false
+		if s.settings.volume<0 or s.settings.volume>1 or s.settings.text_scale<1 or s.settings.text_scale>1.25 or not s.settings.get("motion") is bool or not s.settings.get("fullscreen") is bool:return false
 	return true
 
 func text_ok(value: Variant, limit: int) -> bool:
@@ -149,6 +161,11 @@ func adopt(value: Dictionary):
 		data.version=3
 		data.progress={"fed":0,"rested":0,"claims":[]}
 		data.decor={"lanterns":false,"reading_corner":false}
+
+	if data.version<4:
+		data.version=4;data.tasks=[];data.settings={"volume":0.65,"text_scale":1.0,"motion":true,"fullscreen":false}
+	for task in data.tasks:
+		if task.status in ["queued","running"]:task.status="failed";task.error="Interrupted before completion. Notes preserved; retry intentionally."
 
 func rest(index: int):
 	data.crew[index].energy=mini(100,int(data.crew[index].energy)+30)
@@ -170,15 +187,19 @@ func missions() -> Array:
 		{"id":"garden","title":"Room to grow","description":"Plant the flower garden in Workshop.","ready":data.garden,"stars":0,"berries":5}]
 
 func claim_mission(id: String) -> String:
+	var previous=data.duplicate(true)
 	if id in data.progress.claims:return "That mission reward has already been collected."
 	for mission in missions():
 		if mission.id!=id:continue
 		if not mission.ready:return "Complete the mission before collecting its reward."
 		data.progress.claims.append(id);data.stars+=mission.stars;data.berries=mini(50,int(data.berries)+mission.berries)
-		event("Mission complete: "+mission.title+".");save();return "Mission complete! Your reward is in the basket."
+		event("Mission complete: "+mission.title+".")
+		if not commit(previous):return last_error
+		return "Mission complete! Your reward is in the basket."
 	return "Mission not found."
 
 func buy_upgrade(id: String) -> String:
+	var previous=data.duplicate(true)
 	var costs={"garden":2,"lanterns":3,"reading_corner":4}
 	if not costs.has(id):return "Upgrade not found."
 	var owned=bool(data.garden) if id=="garden" else bool(data.decor[id])
@@ -187,4 +208,32 @@ func buy_upgrade(id: String) -> String:
 	data.stars-=costs[id]
 	if id=="garden":data.garden=true
 	else:data.decor[id]=true
-	event("Workshop upgraded: "+id.replace("_"," ")+".");save();return "Your workshop has a new addition!"
+	event("Workshop upgraded: "+id.replace("_"," ")+".")
+	if not commit(previous):return last_error
+	return "Your workshop has a new addition!"
+
+func queue_task(title: String, notes: String, index: int, mode: String) -> Dictionary:
+	var task={"id":str(Time.get_ticks_usec())+"-"+str(randi()),"title":title,"notes":notes,"actor":index,"mode":mode,"status":"queued","error":"","document":""}
+	data.tasks.push_front(task)
+	if data.tasks.size()>60:data.tasks.resize(60)
+	if not save():
+		data.tasks.erase(task);last_error="Task could not be saved. Choose a writable workshop before creating.";return {}
+	return task
+
+func task_status(id: String, status: String, error="", document="") -> bool:
+	var previous=data.duplicate(true)
+	for task in data.tasks:
+		if task.id==id:
+			task.status=status;task.error=error;task.document=document;return commit(previous)
+	return false
+
+func commit(previous: Dictionary) -> bool:
+	if save():return true
+	# Keep document references held by review panels while rolling back rewards.
+	for i in previous.documents.size():
+		for doc in data.documents:
+			if doc.id==previous.documents[i].id:
+				doc.clear();doc.merge(previous.documents[i],true);previous.documents[i]=doc;break
+	data=previous
+	last_error="Changes could not be saved. No reward or upgrade was granted. Back up your workshop and choose a writable save folder."
+	return false

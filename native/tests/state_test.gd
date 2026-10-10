@@ -34,12 +34,12 @@ func _initialize():
 	var legacy_file=FileAccess.open(GenesisState.SAVE,FileAccess.WRITE)
 	legacy_file.store_string(JSON.stringify(legacy));legacy_file.close()
 	var migrated=GenesisState.new();migrated.load_save()
-	assert(migrated.data.version==3 and migrated.valid(migrated.data))
+	assert(migrated.data.version==4 and migrated.valid(migrated.data))
 	assert(migrated.data.documents[0].content==doc.content)
 	assert(migrated.data.crew[0].approved==1)
 	assert(migrated.data.progress.claims.is_empty())
 	# Mission rewards require real milestones and cannot be farmed.
-	var journey=GenesisState.new();journey.save_enabled=false
+	var journey=GenesisState.new();journey.save_path="user://mission-test.json"
 	journey.claim_mission("approval");assert(journey.data.stars==0)
 	journey.teach("vocabulary","hello","a greeting")
 	journey.claim_mission("lesson");assert(journey.data.berries==7)
@@ -68,5 +68,32 @@ func _initialize():
 	restored.load_save();assert(not restored.save_enabled)
 	assert(not restored.save())
 	assert(FileAccess.get_file_as_string(GenesisState.SAVE)=="invalid original save")
+
+	var task_state=GenesisState.new();task_state.save_path="user://recovery-test.json"
+	var task=task_state.queue_task("Draft","One\nTwo",0,"Template")
+	assert(task.status=="queued")
+	task_state.task_status(task.id,"running")
+	var recovered=GenesisState.new();recovered.adopt(task_state.data)
+	assert(recovered.data.tasks[0].status=="failed" and recovered.data.stars==0)
+	assert(GenesisDocuments.html({"title":"List","content":"1. One\n2. Two","mode":"Template"}).contains("<ol><li>One</li><li>Two</li></ol>"))
+	var profiles=GenesisProfiles.new();profiles.load_index()
+	var first=profiles.create("First");assert(first!=null)
+	first.teach("preference","format","numbered")
+	var second=profiles.create("Second");assert(second.actor().lessons.is_empty())
+	var reopened=profiles.open_profile(profiles.entries[0].id);assert(reopened.actor().lessons.size()==1)
+
+	assert(FileAccess.get_file_as_string(GenesisState.SAVE)=="invalid original save")
+	var bad_index=FileAccess.open(GenesisProfiles.INDEX,FileAccess.WRITE);bad_index.store_string("broken index");bad_index.close()
+	var protected_profiles=GenesisProfiles.new();protected_profiles.load_index()
+	assert(not protected_profiles.writable and protected_profiles.create("Do not overwrite")==null)
+	assert(FileAccess.get_file_as_string(GenesisProfiles.INDEX)=="broken index")
+	var invalid_task=task_state.data.duplicate(true);invalid_task.tasks[0].error=7;assert(not task_state.valid(invalid_task))
+	var failure=GenesisState.new();failure.save_path="user://approval-failure.json"
+	var unsafe_doc=failure.deliver("Draft","Notes","Template",0);failure.save_enabled=false
+	assert(not failure.approve(unsafe_doc) and not unsafe_doc.accepted and not unsafe_doc.credited and failure.data.stars==0 and failure.actor().approved==0)
+	failure.actor().lessons.append({"id":"test","kind":"preference","key":"format","value":"steps"})
+	failure.claim_mission("lesson");assert(failure.data.berries==5 and failure.data.progress.claims.is_empty())
+	failure.data.stars=4;failure.buy_upgrade("garden");assert(not failure.data.garden and failure.data.stars==4)
+	var no_save=GenesisState.new();no_save.save_enabled=false;assert(no_save.queue_task("No save","Notes",0,"Template").is_empty())
 	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, saves, v2 migration, mission rewards, care, upgrades, levels")
 	quit()

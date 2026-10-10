@@ -6,16 +6,18 @@ static func escape(text: String) -> String:
 
 static func html(doc: Dictionary) -> String:
 	var blocks="";var list=""
+	var ordered=RegEx.new();ordered.compile("^[0-9]+[.)] +")
 	for line in String(doc.content).split("\n"):
 		if line.begins_with("# ") or line.begins_with("## "):
 			if not list.is_empty():blocks+="</"+list+">";list=""
 			var level=2 if line.begins_with("## ") else 1
 			blocks+="<h"+str(level)+">"+escape(line.substr(level+1))+"</h"+str(level)+">"
-		elif line.begins_with("- "):
-			if list!="ul":
+		elif line.begins_with("- ") or ordered.search(line)!=null:
+			var kind="ul" if line.begins_with("- ") else "ol"
+			if list!=kind:
 				if not list.is_empty():blocks+="</"+list+">"
-				list="ul";blocks+="<ul>"
-			blocks+="<li>"+escape(line.substr(2))+"</li>"
+				list=kind;blocks+="<"+kind+">"
+			blocks+="<li>"+escape(line.substr(2) if kind=="ul" else line.substr(ordered.search(line).get_end()))+"</li>"
 		else:
 			if not list.is_empty():blocks+="</"+list+">";list=""
 			if not line.strip_edges().is_empty():blocks+="<p>"+escape(line)+"</p>"
