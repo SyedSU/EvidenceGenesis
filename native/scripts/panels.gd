@@ -142,7 +142,15 @@ func export_selected(path: String):
 		if input==null or input.get_length()>1500000:game.toast("Backup unreadable or too large.");return
 		var parsed=JSON.parse_string(input.get_as_text());input.close()
 		if not game.state.valid(parsed):game.toast("Invalid backup. Your current workshop is unchanged.");return
-		game.state.adopt(parsed);game.state.save_enabled=true;game.state.save();game.world.setup(game.state);game.refresh_hud();game.close_panel();game.toast("Workshop restored.");return
+		if game.menu_open or game.state.save_path==GenesisState.SAVE:
+			var restored=game.profiles.create("Restored workshop",false,parsed)
+			if restored==null:game.toast(game.profiles.error);return
+			game.begin_workshop(restored)
+		else:
+			var previous=game.state.data.duplicate(true);game.state.adopt(parsed)
+			if not game.state.commit(previous):game.toast(game.state.last_error);return
+			game.world.setup(game.state);game.apply_settings();game.refresh_hud();game.close_panel()
+		game.toast("Workshop restored.");return
 	var file=FileAccess.open(path,FileAccess.WRITE)
 	if file==null:game.toast("Could not write to that folder. Choose another location.");return
 	file.store_string(game.file_content);file.close();game.toast("Saved: "+path.get_file())

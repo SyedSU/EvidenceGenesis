@@ -94,6 +94,26 @@ func _initialize():
 	failure.actor().lessons.append({"id":"test","kind":"preference","key":"format","value":"steps"})
 	failure.claim_mission("lesson");assert(failure.data.berries==5 and failure.data.progress.claims.is_empty())
 	failure.data.stars=4;failure.buy_upgrade("garden");assert(not failure.data.garden and failure.data.stars==4)
+
+	var memory=GenesisState.new();memory.save_path="user://memory-failure.json"
+	assert(memory.teach("preference","format","numbered"))
+	var memory_disk=FileAccess.get_file_as_string(memory.save_path);var lesson_id=memory.actor().lessons[0].id
+	memory.save_enabled=false
+	assert(not memory.teach("preference","new","value"))
+	assert(not memory.teach("preference","format","bullets"))
+	assert(not memory.forget(lesson_id))
+	assert(memory.actor().lessons.size()==1 and memory.actor().lessons[0].value=="numbered")
+	assert(FileAccess.get_file_as_string(memory.save_path)==memory_disk)
+	var atomic=GenesisState.new();atomic.save_path="user://atomic-task.json"
+	var queued=atomic.queue_task("Atomic draft","Source",0,"Template");assert(atomic.task_status(queued.id,"running"))
+	atomic.save_enabled=false;assert(atomic.complete_task(queued.id,"Draft").is_empty())
+	assert(atomic.data.documents.is_empty() and atomic.actor().energy==80)
+	var atomic_reload=GenesisState.new();atomic_reload.save_path=atomic.save_path;atomic_reload.load_save()
+	assert(atomic_reload.data.documents.is_empty() and atomic_reload.data.tasks[0].status=="failed" and atomic_reload.actor().energy==80)
+	atomic.save_enabled=true
+	var delivery=atomic.complete_task(queued.id,"Draft");assert(not delivery.is_empty())
+	var repeated=atomic.complete_task(queued.id,"Different draft");assert(repeated.id==delivery.id)
+	assert(atomic.data.documents.size()==1 and atomic.actor().energy==72 and atomic.data.stars==0)
 	var no_save=GenesisState.new();no_save.save_enabled=false;assert(no_save.queue_task("No save","Notes",0,"Template").is_empty())
 	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, saves, v2 migration, mission rewards, care, upgrades, levels")
 	quit()

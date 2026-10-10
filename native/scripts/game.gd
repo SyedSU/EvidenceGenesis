@@ -33,6 +33,8 @@ var chat_button: Button
 var screenshot_frames=0
 
 func _ready():
+	# Menu startup must never autosave a fresh state over a legacy file.
+	state.save_enabled=false
 	profiles.load_index()
 	if not profiles.selected.is_empty():
 		var existing=profiles.open_profile(profiles.selected)
@@ -193,9 +195,9 @@ func ai_finished(content: String, error: String):
 		else:chat_panel();chat_input.text=task.notes
 		return
 	if task.kind=="document":
-		var doc=state.deliver(task.title,content,"Local AI",int(task.actor))
+		var doc=state.complete_task(task.get("id",""),content)
 		if doc.is_empty():toast(state.last_error);return
-		var recorded=state.task_status(task.get("id",""),"completed","",doc.id);refresh_hud();document_panel(doc);toast("Document delivered. Review it before approving." if recorded else state.last_error)
+		refresh_hud();document_panel(doc);toast("Document delivered. Review it before approving.")
 	else:
 		session_chat.append({"name":state.data.crew[int(task.actor)].name,"text":content});chat_panel();toast("Your companion replied.")
 

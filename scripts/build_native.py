@@ -88,6 +88,7 @@ def main():
    for name in ['windows_release_x86_64.exe','windows_debug_x86_64.exe','version.txt']:(target/name).write_bytes(z.read('templates/'+name))
   run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'],isolated=False)
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/state_test.gd'],'GENESIS_STATE_TEST_OK')
+  run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/startup_test.gd','--','--no-brain'],'GENESIS_STARTUP_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')],isolated=False)
   runtime=args.runtime or download(f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip',cache/'llama-win.zip')
   if digest(runtime)!=RUNTIME_SHA:raise RuntimeError('Runtime checksum mismatch')

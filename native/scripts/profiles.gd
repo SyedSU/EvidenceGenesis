@@ -31,12 +31,15 @@ func persist() -> bool:
 	if FileAccess.file_exists(INDEX):DirAccess.copy_absolute(ProjectSettings.globalize_path(INDEX),ProjectSettings.globalize_path(INDEX+".backup"))
 	return DirAccess.rename_absolute(ProjectSettings.globalize_path(INDEX+".tmp"),ProjectSettings.globalize_path(INDEX))==OK
 
-func create(name: String, legacy=false) -> GenesisState:
+func create(name: String, legacy=false, restored: Dictionary={}) -> GenesisState:
 	if not writable or entries.size()>=20:return null
 	var state=GenesisState.new()
 	if legacy:
 		state.load_save()
 		if not state.save_enabled:error=state.last_error;return null
+	if not restored.is_empty():
+		if not state.valid(restored):error="Invalid backup; original workshops preserved.";return null
+		state.adopt(restored)
 	var id=str(int(Time.get_unix_time_from_system()*1000000))
 	while entries.any(func(item):return item.id==id):id=str(int(id)+1)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://profiles"))

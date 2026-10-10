@@ -25,16 +25,17 @@ func event(text: String):
 	if data.journal.size() > 30: data.journal.resize(30)
 
 func teach(kind: String, key: String, value: String) -> bool:
+	var previous=data.duplicate(true)
 	key = key.strip_edges(); value = value.strip_edges()
 	if kind not in ["preference","vocabulary","instruction"] or key.is_empty() or value.is_empty() or key.length()>80 or value.length()>600:
 		last_error = "Give the lesson a name and something to remember."; return false
 	var lessons = actor().lessons
 	for lesson in lessons:
 		if lesson.kind==kind and lesson.key.to_lower()==key.to_lower():
-			lesson.value=value; event(actor().name+" corrected “"+key+"”."); save(); return true
+			lesson.value=value; event(actor().name+" corrected “"+key+"”.");return commit(previous)
 	if lessons.size()>=50: last_error="Notebook full. Edit or forget an existing lesson."; return false
 	lessons.append({"id":str(Time.get_ticks_usec()),"kind":kind,"key":key,"value":value})
-	event(actor().name+" learned “"+key+"”."); save(); return true
+	event(actor().name+" learned “"+key+"”.");return commit(previous)
 
 func template(title: String, notes: String) -> String:
 	var numbered = false; var signoff = ""; var glossary = ""
@@ -50,15 +51,39 @@ func template(title: String, notes: String) -> String:
 	if not signoff.is_empty(): content+="\n"+signoff
 	return content
 
-func deliver(title: String, content: String, mode: String, actor_index: int) -> Dictionary:
-	var previous=data.duplicate(true)
+func draft_document(title: String, content: String, mode: String, actor_index: int) -> Dictionary:
 	var doc={"id":str(Time.get_ticks_usec())+"-"+str(randi()),"title":title,"content":content,"mode":mode,"actor":actor_index,"accepted":false,"credited":false}
 	data.documents.push_front(doc)
-	if data.documents.size()>20: data.documents.resize(20)
+	if data.documents.size()>20:data.documents.resize(20)
 	data.crew[actor_index].energy=maxi(0,int(data.crew[actor_index].energy)-8)
 	event(data.crew[actor_index].name+" delivered “"+title+"”.")
-	if not commit(previous):return {}
 	return doc
+
+func deliver(title: String, content: String, mode: String, actor_index: int) -> Dictionary:
+	var previous=data.duplicate(true)
+	var doc=draft_document(title,content,mode,actor_index)
+	return doc if commit(previous) else {}
+
+func complete_task(id: String, content: String) -> Dictionary:
+	for task in data.tasks:
+		if task.id!=id:continue
+		if task.status=="completed":
+			for doc in data.documents:
+				if doc.id==task.document:return doc
+			return {}
+		if task.status not in ["queued","running"]:return {}
+		var previous=data.duplicate(true)
+		var doc=draft_document(task.title,content,task.mode,int(task.actor))
+		task.status="completed";task.document=doc.id;task.error=""
+		return doc if commit(previous) else {}
+	return {}
+
+func forget(id: String) -> bool:
+	var previous=data.duplicate(true)
+	for lesson in actor().lessons:
+		if lesson.id==id:
+			actor().lessons.erase(lesson);event("A lesson was forgotten.");return commit(previous)
+	return false
 
 func approve(doc: Dictionary) -> bool:
 	if doc.accepted:return true
@@ -235,5 +260,5 @@ func commit(previous: Dictionary) -> bool:
 			if doc.id==previous.documents[i].id:
 				doc.clear();doc.merge(previous.documents[i],true);previous.documents[i]=doc;break
 	data=previous
-	last_error="Changes could not be saved. No reward or upgrade was granted. Back up your workshop and choose a writable save folder."
+	last_error="Changes could not be saved. Your previous workshop state was kept. Back up from Settings and check save folder permissions."
 	return false
