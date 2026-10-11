@@ -71,5 +71,7 @@ implemented. Future releases can extend the same game project.
 CREDITS
 Original procedural artwork and synthesized music for Evidence Genesis.
 Godot 4.7.2 stable; llama.cpp b11429; Qwen2.5-0.5B-Instruct Q4_K_M.
-See licenses/ for copyright notices. SHA256SUMS.json records packaged
+The full ZIP keeps copyright notices in licenses/. A Hub component
+installation also keeps runtime notices in brain/licenses/ and model
+notices in model/licenses/. SHA256SUMS.json records full-ZIP packaged
 file hashes and the model source. No original third-party game art used.
