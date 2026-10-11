@@ -51,7 +51,8 @@ func go(index: int, destination: Vector2):
 
 func _process(delta):
 	if state==null:return
-	art_time+=delta;ambient_clock+=delta
+	if state.data.settings.motion:art_time+=delta
+	ambient_clock+=delta
 	if not paused:
 		var index=int(state.data.selected)
 		if actions[index] not in ["Working","Resting"]:

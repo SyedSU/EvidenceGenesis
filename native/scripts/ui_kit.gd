@@ -1,6 +1,8 @@
 class_name GenesisUI
 extends RefCounted
 
+static var text_scale=1.0
+
 const INK=Color("233e36")
 const PAPER=Color("f4f0df")
 const MUTED=Color("617566")
@@ -13,7 +15,7 @@ static func style(color: Color, radius=8, padding=14) -> StyleBoxFlat:
 	return box
 
 static func theme() -> Theme:
-	var t=Theme.new();t.default_font_size=16
+	var t=Theme.new();t.default_font_size=int(16*text_scale)
 	t.set_color("font_color","Label",INK)
 	t.set_color("font_color","Button",INK)
 	t.set_color("font_hover_color","Button",INK)
@@ -39,7 +41,8 @@ static func theme() -> Theme:
 	return t
 
 static func label(text: String, size=16, color=INK) -> Label:
-	var l=Label.new();l.text=text;l.add_theme_font_size_override("font_size",size);l.add_theme_color_override("font_color",color)
+	var l=Label.new();l.text=text;l.add_theme_font_size_override("font_size",int(size*text_scale));l.add_theme_color_override("font_color",color)
+	l.set_meta("base_font_size",size)
 	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	return l
 

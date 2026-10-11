@@ -36,7 +36,9 @@ func memory_panel():
 		body.add_child(GenesisUI.label(lesson.key,19));body.add_child(GenesisUI.label(lesson.value,15))
 		var row=HBoxContainer.new();body.add_child(row)
 		row.add_child(GenesisUI.button("Edit",func():teach_panel(lesson.kind,lesson.key,lesson.value)))
-		row.add_child(GenesisUI.button("Forget",func():game.state.actor().lessons.erase(lesson);game.state.event("A lesson was forgotten.");game.state.save();game.refresh_hud();memory_panel()))
+		row.add_child(GenesisUI.button("Forget",func():
+			if not game.state.forget(lesson.id):game.toast(game.state.last_error)
+			game.refresh_hud();memory_panel()))
 
 func task_panel():
 	var box=game.panel("Make something real")
@@ -57,11 +59,19 @@ func submit():
 	if title.is_empty() or notes.is_empty() or notes.length()>4000:game.toast("Add a title and source notes up to 4,000 characters.");return
 	if int(game.state.actor().energy)<8:game.toast("Your companion needs a berry or a rest first.");return
 	if mode.selected==1:
+		var task=game.state.queue_task(title,notes,int(game.state.data.selected),"Template")
+		if task.is_empty():game.toast(game.state.last_error);return
+		if not game.state.task_status(task.id,"running"):game.toast(game.state.last_error);return
 		var content=game.state.template(title,notes)
-		var doc=game.state.deliver(title,content,"Template",int(game.state.data.selected));game.refresh_hud();game.document_panel(doc);return
+		var doc=game.state.complete_task(task.id,content)
+		if doc.is_empty():game.toast(game.state.last_error);return
+		game.refresh_hud();game.document_panel(doc);return
 	if not game.brain.available:game.toast(game.brain.status);return
 	run_button.disabled=true
-	game.pending={"kind":"document","title":title,"notes":notes,"actor":int(game.state.data.selected)}
+	var task=game.state.queue_task(title,notes,int(game.state.data.selected),"Local AI")
+	if task.is_empty():game.toast(game.state.last_error);return
+	if not game.state.task_status(task.id,"running"):game.toast(game.state.last_error);return
+	game.pending={"id":task.id,"kind":"document","title":title,"notes":notes,"actor":int(game.state.data.selected)}
 	game.world.actions[int(game.state.data.selected)]="Working"
 	game.world.go(int(game.state.data.selected),Vector2(7.5,5.8));game.world.paused=false
 	game.toast(game.state.actor().name+" is working on your document…")
