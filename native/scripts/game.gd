@@ -14,6 +14,7 @@ var notebook: GenesisNotebook
 var hud_name: Label
 var hud_stats: Label
 var hud_quest: Label
+var hud_location: Label
 var crew_buttons: Array=[]
 var hud_ai: Label
 var message: Label
@@ -73,7 +74,7 @@ func build_hud():
 	row.add_child(GenesisUI.button("Menu",main_menu))
 	var quest=PanelContainer.new();quest.position=Vector2(24,115);quest.custom_minimum_size=Vector2(272,170);ui.add_child(quest)
 	hud_parts.append(quest)
-	var qbox=VBoxContainer.new();quest.add_child(qbox);qbox.add_child(GenesisUI.label("WORKSHOP / YOUR NEXT STEP",10,GenesisUI.MUTED))
+	var qbox=VBoxContainer.new();quest.add_child(qbox);hud_location=GenesisUI.label("WORKSHOP / YOUR NEXT STEP",10,GenesisUI.MUTED);qbox.add_child(hud_location)
 	hud_quest=GenesisUI.label("",15);qbox.add_child(hud_quest)
 	hud_ai=GenesisUI.label("",11,GenesisUI.PAPER);hud_ai.custom_minimum_size.x=260;hud_ai.position=Vector2(24,296);ui.add_child(hud_ai)
 	message=GenesisUI.label("Click to walk · WASD / arrows · E to interact · Tab to switch",15,GenesisUI.PAPER)
@@ -100,6 +101,9 @@ func refresh_hud():
 	if state.actor().lessons.is_empty():next="Start: move with arrows, visit the shelf or open Teach. Your first lesson is editable in Memory."
 	elif state.data.documents.is_empty():next="Next: Create from your notes. Template mode is always offline."
 	elif int(state.actor().approved)==0:next="Next: open Documents, review the draft, save corrections, then Approve."
+	if state.data.exploration.zone!="workshop":
+		next="Find the open field journal. Move nearby and press E to record its notes." if state.data.exploration.zone not in state.data.exploration.discoveries else "Make a field report, review it, then collect expedition rewards in Worlds."
+	hud_location.text=String(state.data.exploration.zone).to_upper()+" / YOUR NEXT STEP"
 	hud_quest.text=next+"\nOpen Missions to see your goals."
 
 func panel(title: String) -> VBoxContainer:
