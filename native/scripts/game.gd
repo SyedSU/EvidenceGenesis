@@ -64,7 +64,7 @@ func build_hud():
 	hud_parts.append(top)
 	var row=HBoxContainer.new();top.add_child(row)
 	var brand=VBoxContainer.new();brand.custom_minimum_size.x=240;row.add_child(brand)
-	brand.add_child(GenesisUI.label("evidence genesis",25));brand.add_child(GenesisUI.label("THE FIRST LITTLE WORLD",10,GenesisUI.MUTED))
+	brand.add_child(GenesisUI.label("evidence genesis",25));brand.add_child(GenesisUI.label("FIELDWORK / YOUR LITTLE WORLDS",10,GenesisUI.MUTED))
 	var info=VBoxContainer.new();info.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(info)
 	hud_name=GenesisUI.label("",18);hud_stats=GenesisUI.label("",12,GenesisUI.MUTED);info.add_child(hud_name);info.add_child(hud_stats)
 	for index in 2:
@@ -81,7 +81,7 @@ func build_hud():
 	var dock=PanelContainer.new();dock.position=Vector2(60,640);dock.size=Vector2(1160,60);ui.add_child(dock)
 	hud_parts.append(dock);hud_parts.append(message);hud_parts.append(hud_ai)
 	var buttons=HBoxContainer.new();buttons.alignment=BoxContainer.ALIGNMENT_CENTER;dock.add_child(buttons)
-	for item in [["Missions",missions_panel],["Teach",func():notebook.teach_panel()],["Memory",func():notebook.memory_panel()],["Create",func():notebook.task_panel()],["Talk",chat_panel],["Tasks",task_history],["Documents",documents_panel],["Workshop",garden_panel]]:
+	for item in [["Worlds",world_map],["Missions",missions_panel],["Teach",func():notebook.teach_panel()],["Memory",func():notebook.memory_panel()],["Create",func():notebook.task_panel()],["Talk",chat_panel],["Tasks",task_history],["Documents",documents_panel],["Workshop",garden_panel]]:
 		buttons.add_child(GenesisUI.button(item[0],item[1],item[0]=="Create"))
 	file_dialog=FileDialog.new();file_dialog.access=FileDialog.ACCESS_FILESYSTEM;file_dialog.use_native_dialog=true
 	file_dialog.file_selected.connect(export_selected);ui.add_child(file_dialog)
@@ -129,6 +129,8 @@ func select_actor(index: int):
 func interaction(kind: String):
 	if not pending.is_empty():toast("Your companion is working. You can review documents when it finishes.");return
 	match kind:
+		"waystone":world_map()
+		"discovery":field_journal()
 		"shelf","notebook":notebook.teach_panel()
 		"desk":notebook.task_panel()
 		"bed":
@@ -156,6 +158,8 @@ func _process(delta):
 			menu_open=false
 			for part in hud_parts:part.show()
 			close_panel()
+			if "--capture-mosswood" in OS.get_cmdline_user_args():state.data.exploration.zone="mosswood";world.setup(state)
+			if "--capture-archive" in OS.get_cmdline_user_args():state.data.exploration.zone="archive";world.setup(state)
 			if "--capture-memory" in OS.get_cmdline_user_args():notebook.memory_panel()
 			if "--capture-document" in OS.get_cmdline_user_args() and not state.data.documents.is_empty():document_panel(state.data.documents[0])
 			if "--capture-menu" in OS.get_cmdline_user_args():main_menu()
@@ -214,6 +218,13 @@ func smoke_test():
 	notebook.title_field.text="Template task integration";notebook.notes_field.text="One\nTwo";notebook.mode.select(1);notebook.submit()
 	assert(state.data.tasks[0].status=="completed" and state.data.tasks[0].document==state.data.documents[0].id)
 	task_history();main_menu();new_workshop();begin_workshop(state);close_panel();missions_panel();documents_panel();document_panel(doc);settings_panel();chat_panel();garden_panel();close_panel()
+	state.data.garden=true
+	assert(state.travel("mosswood"));world.setup(state);world_map();field_journal()
+	notebook.title_field.text="Field report: Mosswood";notebook.notes_field.text=state.field_notes("mosswood");notebook.mode.select(1);notebook.submit()
+	assert(state.data.tasks[0].status=="completed")
+	state.data.crew[0].approved=3;assert(state.travel("archive"));world.setup(state)
+	assert(world.blocked(Vector2(13.5,6)))
+	field_journal();world_map();assert(state.travel("workshop"));world.setup(state);close_panel()
 	print("GENESIS_NATIVE_SMOKE_OK")
 	audio.stop();audio.stream=null
 	await get_tree().create_timer(.3).timeout
@@ -266,7 +277,7 @@ func main_menu():
 	if not pending.is_empty():toast("Finish or cancel the current task before changing workshops.");task_history();return
 	menu_open=true
 	for part in hud_parts:part.hide()
-	var box=panel("Evidence Genesis · 0.4.0")
+	var box=panel("Evidence Genesis · 0.5.0")
 	overlay.position=Vector2(410,116);overlay.size=Vector2(460,500)
 	fit_panel(overlay,Vector2(460,500))
 	box.add_child(GenesisUI.label("A small workshop. Work you can trust.",21))
@@ -326,3 +337,31 @@ func fit_panel(target: Control, dimensions: Vector2):
 func scale_labels(node: Node):
 	if node is Label and node.has_meta("base_font_size"):node.add_theme_font_size_override("font_size",int(node.get_meta("base_font_size")*GenesisUI.text_scale))
 	for child in node.get_children():scale_labels(child)
+
+
+func world_map():
+	var box=panel("Your world map")
+	box.add_child(GenesisUI.label("Grow the workshop, then take your companion into the field.",16))
+	for destination in state.destinations():
+		box.add_child(GenesisUI.label(destination.name+" · "+destination.description,16))
+		var button=GenesisUI.button("Travel to "+destination.name,func():
+			if not pending.is_empty() or "Resting" in world.actions:toast("Finish the current task or rest before traveling.");return
+			if state.travel(destination.id):world.setup(state);close_panel();refresh_hud();toast("Arrived at "+destination.name+". Find the open field journal or return with Worlds.")
+			else:toast(state.last_error))
+		button.disabled=not destination.unlocked or not pending.is_empty();box.add_child(button)
+	box.add_child(GenesisUI.label("Mosswood: plant your garden. Tidal Archive: approve three documents.",13,GenesisUI.MUTED))
+	for mission in state.expedition_missions():
+		var collected=mission.id in state.data.exploration.claims
+		var reward=GenesisUI.button(mission.title+(" · Collected" if collected else " · "+str(mission.berries)+" berries"),func():
+			if state.claim_expedition(mission.id):toast("Expedition reward collected.");refresh_hud();world_map()
+			else:toast(state.last_error))
+		reward.disabled=collected or not mission.ready;box.add_child(reward)
+
+func field_journal():
+	var box=panel("A notebook from the field")
+	var zone=String(state.data.exploration.zone)
+	box.add_child(GenesisUI.label(state.field_notes(zone),17))
+	box.add_child(GenesisUI.button("Record and make a field report",func():
+		if not state.discover():toast(state.last_error);return
+		notebook.task_panel();notebook.title_field.text="Field report: "+zone.capitalize();notebook.notes_field.text=state.field_notes(zone),true))
+	box.add_child(GenesisUI.label("These are editable source notes. Choose local AI or explicit template mode, then review the result yourself.",13,GenesisUI.MUTED))

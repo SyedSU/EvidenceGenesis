@@ -2,7 +2,7 @@ name: Native Windows game
 on:
   workflow_dispatch:
   push:
-    branches: ['feat/native-game', 'feat/workshop-profiles']
+    branches: ['main', 'feat/native-game', 'feat/workshop-profiles']
     paths: ['native/**', 'scripts/**', 'tests/test_component_packages.py', '.github/workflows/native-game.yml']
 concurrency:
   group: native-game-${{ github.ref }}
@@ -24,14 +24,14 @@ jobs:
         run: python scripts/build_native.py
       - uses: actions/upload-artifact@v4
         with:
-          name: EvidenceGenesis-Windows-v0.4.0
-          path: build/EvidenceGenesis-Windows-v0.4.0.zip
+          name: EvidenceGenesis-Windows-v0.5.0
+          path: build/EvidenceGenesis-Windows-v0.5.0.zip
           retention-days: 30
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EvidenceGenesis-components-v0.4.0
+          name: EvidenceGenesis-components-v0.5.0
           path: build/components/*
           retention-days: 30
           if-no-files-found: error

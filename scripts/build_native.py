@@ -77,7 +77,7 @@ def run_game(executable, args, marker=None, isolated=True):
    raise RuntimeError('Native test failed: '+str(args))
 
 def package(folder, destination, provenance=None):
- manifest={'version':'0.4.0','saveSchema':4,'godot':GODOT,'llama_cpp':LLAMA,'model':'Qwen2.5-0.5B-Instruct Q4_K_M','model_source':provenance['model']['sourceUrl'] if provenance else MODEL_URL,'files':{}}
+ manifest={'version':'0.5.0','saveSchema':4,'godot':GODOT,'llama_cpp':LLAMA,'model':'Qwen2.5-0.5B-Instruct Q4_K_M','model_source':provenance['model']['sourceUrl'] if provenance else MODEL_URL,'files':{}}
  for path in sorted(folder.rglob('*')):
   if path.is_file() and path.name!='SHA256SUMS.json':manifest['files'][path.relative_to(folder).as_posix()]=digest(path)
  (folder/'SHA256SUMS.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
@@ -89,7 +89,7 @@ def package(folder, destination, provenance=None):
  print('Package:',destination,'SHA256:',digest(destination))
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--cache',type=Path,default=Path(tempfile.gettempdir())/'EvidenceGenesis-tools'/GODOT);parser.add_argument('--godot',type=Path);parser.add_argument('--model',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--package-only',action='store_true');parser.add_argument('--output',type=Path,default=ROOT/'build/EvidenceGenesis-Windows-v0.4.0.zip')
+ parser=argparse.ArgumentParser();parser.add_argument('--cache',type=Path,default=Path(tempfile.gettempdir())/'EvidenceGenesis-tools'/GODOT);parser.add_argument('--godot',type=Path);parser.add_argument('--model',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--package-only',action='store_true');parser.add_argument('--output',type=Path,default=ROOT/'build/EvidenceGenesis-Windows-v0.5.0.zip')
  args=parser.parse_args();cache=args.cache;folder=ROOT/'build/windows';folder.mkdir(parents=True,exist_ok=True)
  provenance=None
  if not args.package_only:

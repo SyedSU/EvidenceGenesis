@@ -4,7 +4,7 @@ A native 2.5D companion game for Windows. Walk around a little workshop, care fo
 
 ## Play the packaged game
 
-Extract the entire `EvidenceGenesis-Windows-v0.4.0.zip`, open its `EvidenceGenesis` folder, and double-click `EvidenceGenesis.exe`. Keep `brain/` and `model/` beside the executable. No Unity, Python, editor, account, or API key is required on the player's computer.
+Extract the entire `EvidenceGenesis-Windows-v0.5.0.zip`, open its `EvidenceGenesis` folder, and double-click `EvidenceGenesis.exe`. Keep `brain/` and `model/` beside the executable. No Unity, Python, editor, account, or API key is required on the player's computer.
 
 Windows 10/11 x64 and OpenGL 3.3 graphics are required. AI speed depends on CPU and available memory; minimum hardware has not been benchmarked. The package uses a small CPU model and offers clearly labeled template mode. The preview executable is unsigned. On a fresh Windows installation, the AI may require Microsoft’s C++ x64 runtime. If missing, the game provides an official Microsoft download link in Settings; install it once and restart. That setup download requires internet.
 
@@ -36,6 +36,6 @@ The `Native Windows game` workflow builds and tests the package on Windows and u
 
 For local source testing with Godot: import the project, run `--headless --path native --script res://tests/state_test.gd`, then run `--headless --path native -- --no-brain --smoke-test`. Use isolated user-data directories for tests. An AI integration test uses `-- --ai-smoke-test`; optionally set `GENESIS_LLAMA_PATH` and `GENESIS_MODEL_PATH` to local runtime paths.
 
-This is a playable first release with one workshop, two companions, document creation, note review and companion chat. Mobile packaging, arbitrary computer automation, voice, multiplayer and additional worlds are not implemented.
+Version 0.5 adds the Worlds map, Mosswood forest field station and Tidal Archive shoreline observatory. Plant the garden to unlock Mosswood; approve three documents to unlock the Archive. Find field journals, edit their source notes, create a guide in local AI or template mode, and review before collecting one-time expedition rewards. Travel waits for active tasks/rest and always allows returning home. Existing version4 workshop profiles load with default exploration data; the 0.4 reader accepts and preserves the optional fields. Mobile packaging, arbitrary automation, voice and multiplayer remain separate milestones.
 
 The earlier browser prototype remains available; see [BROWSER-PROTOTYPE.md](BROWSER-PROTOTYPE.md).

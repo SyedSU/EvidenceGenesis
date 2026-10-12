@@ -73,6 +73,6 @@ func submit():
 	if not game.state.task_status(task.id,"running"):game.toast(game.state.last_error);return
 	game.pending={"id":task.id,"kind":"document","title":title,"notes":notes,"actor":int(game.state.data.selected)}
 	game.world.actions[int(game.state.data.selected)]="Working"
-	game.world.go(int(game.state.data.selected),Vector2(7.5,5.8));game.world.paused=false
+	game.world.go(int(game.state.data.selected),Vector2(7.5,5.8) if game.state.data.exploration.zone=="workshop" else Vector2(5.5,6.5));game.world.paused=false
 	game.toast(game.state.actor().name+" is working on your document…")
 	game.brain.generate(game.state.actor().duplicate(true),title,notes)

@@ -1,5 +1,5 @@
 EVIDENCE GENESIS - THE FIRST LITTLE WORLD
-Windows playable build 0.4.0
+Windows playable build 0.5.0
 
 START
 1. Extract the entire ZIP (right-click > Extract All).

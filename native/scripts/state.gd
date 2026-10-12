@@ -13,7 +13,7 @@ func _init():
 func fresh() -> Dictionary:
 	return {"version":4, "selected":0, "berries":5, "stars":0, "night":false, "garden":false,
 		"tasks":[], "settings":{"volume":0.65,"text_scale":1.0,"motion":true,"fullscreen":false}, "sound":true, "harvest_at":0, "seen_intro":false, "documents":[], "journal":[], "progress":{"fed":0,"rested":0,"claims":[]},
-		"decor":{"lanterns":false,"reading_corner":false},
+		"decor":{"lanterns":false,"reading_corner":false}, "exploration":{"zone":"workshop","visited":["workshop"],"discoveries":[],"claims":[]},
 		"crew":[{"name":"Milo", "role":"Document maker", "energy":80, "approved":0, "lessons":[], "x":5.5, "y":8.2},
 		{"name":"Pip", "role":"Reviewer", "energy":90, "approved":0, "lessons":[], "x":8.2, "y":6.8}]}
 
@@ -172,6 +172,16 @@ func valid(s: Variant) -> bool:
 		for key in ["volume","text_scale"]:
 			if not (s.settings.get(key) is int or s.settings.get(key) is float):return false
 		if s.settings.volume<0 or s.settings.volume>1 or s.settings.text_scale<1 or s.settings.text_scale>1.25 or not s.settings.get("motion") is bool or not s.settings.get("fullscreen") is bool:return false
+	if s.has("exploration"):
+		var e=s.exploration
+		if not e is Dictionary or e.get("zone") not in ["workshop","mosswood","archive"]:return false
+		for key in ["visited","discoveries","claims"]:
+			if not e.get(key) is Array or e[key].size()>3:return false
+			var seen=[]
+			for item in e[key]:
+				var allowed=["workshop","mosswood","archive"] if key=="visited" else (["mosswood","archive"] if key=="discoveries" else ["fieldwork","cartographer"])
+				if item not in allowed or item in seen:return false
+				seen.append(item)
 	return true
 
 func text_ok(value: Variant, limit: int) -> bool:
@@ -182,6 +192,7 @@ func actor_index_ok(value: Variant) -> bool:
 
 func adopt(value: Dictionary):
 	data=value.duplicate(true)
+	if not data.has("exploration"):data.exploration={"zone":"workshop","visited":["workshop"],"discoveries":[],"claims":[]}
 	if data.version==2:
 		data.version=3
 		data.progress={"fed":0,"rested":0,"claims":[]}
@@ -262,3 +273,52 @@ func commit(previous: Dictionary) -> bool:
 	data=previous
 	last_error="Changes could not be saved. Your previous workshop state was kept. Back up from Settings and check save folder permissions."
 	return false
+
+
+func destinations() -> Array:
+	return [
+		{"id":"workshop","name":"Home Workshop","description":"Care, memory and your growing collection.","unlocked":true},
+		{"id":"mosswood","name":"Mosswood","description":"A forest field station. Find the seed journal.","unlocked":data.garden},
+		{"id":"archive","name":"Tidal Archive","description":"A coastal observatory. Find the tide ledger.","unlocked":int(data.crew[0].approved)+int(data.crew[1].approved)>=3}]
+
+func travel(zone: String) -> bool:
+	for destination in destinations():
+		if destination.id!=zone:continue
+		if not destination.unlocked:last_error="Plant the garden for Mosswood; approve three documents for Tidal Archive.";return false
+		var previous=data.duplicate(true)
+		data.exploration.zone=zone
+		if zone not in data.exploration.visited:data.exploration.visited.append(zone)
+		for i in 2:data.crew[i].x=5.5+i;data.crew[i].y=8.2
+		event("Arrived at "+destination.name+".")
+		return commit(previous)
+	last_error="Unknown destination.";return false
+
+func field_notes(zone: String) -> String:
+	if zone=="mosswood":return "Mosswood field notes\nFern seeds settle in sheltered damp soil.\nLeave mature plants intact; record observations before collecting.\nCreate a care guide for a small forest garden."
+	if zone=="archive":return "Tidal Archive observations\nMark the time and shoreline position of each tide observation.\nKeep water away from workshop equipment.\nCreate a repeatable shoreline observation checklist."
+	return ""
+
+func discover() -> bool:
+	var zone=String(data.exploration.zone)
+	if zone not in ["mosswood","archive"]:last_error="There is no field journal here.";return false
+	if zone in data.exploration.discoveries:return true
+	var previous=data.duplicate(true);data.exploration.discoveries.append(zone)
+	event("Recorded a field journal in "+zone+".")
+	return commit(previous)
+
+func expedition_missions() -> Array:
+	var reviewed=false
+	for doc in data.documents:
+		if doc.accepted and doc.title.begins_with("Field report:"):reviewed=true
+	return [
+		{"id":"fieldwork","title":"From field notes to a useful guide","ready":not data.exploration.discoveries.is_empty() and reviewed,"berries":3},
+		{"id":"cartographer","title":"A world worth exploring","ready":data.exploration.visited.size()==3 and data.exploration.discoveries.size()==2,"berries":5}]
+
+func claim_expedition(id: String) -> bool:
+	if id in data.exploration.claims:last_error="Already collected.";return false
+	for mission in expedition_missions():
+		if mission.id==id and mission.ready:
+			var previous=data.duplicate(true);data.exploration.claims.append(id);data.berries=mini(50,int(data.berries)+mission.berries)
+			event("Expedition complete: "+mission.title+".")
+			return commit(previous)
+	last_error="Finish the expedition before collecting its reward.";return false

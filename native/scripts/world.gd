@@ -11,7 +11,7 @@ var paused=false
 var grid=AStarGrid2D.new()
 var idle_clock=0.0
 var ambient_clock=0.0
-var props=[
+var workshop_props=[
 	{"kind":"shelf","pos":Vector2(3.4,4.1),"size":Vector2(.7,2.3)},
 	{"kind":"desk","pos":Vector2(6.8,4.3),"size":Vector2(1.8,1.1)},
 	{"kind":"bed","pos":Vector2(8.6,7),"size":Vector2(1.3,2)},
@@ -19,8 +19,11 @@ var props=[
 	{"kind":"plant","pos":Vector2(9.4,3.6),"size":Vector2(.6,.6)},
 	{"kind":"bush","pos":Vector2(2.4,10.5),"size":Vector2(.8,.8)}]
 
+var props=[]
+
 func setup(value: GenesisState):
 	state=value
+	props=workshop_props.duplicate(true) if state.data.exploration.zone=="workshop" else [{"kind":"discovery","pos":Vector2(8,4),"size":Vector2(1,1)}, {"kind":"desk","pos":Vector2(4,5),"size":Vector2(1.8,1.1)}, {"kind":"waystone","pos":Vector2(9,10),"size":Vector2(.8,.8)}]
 	paths=[[],[]];actions=["Idle","Idle"]
 	for i in 2:positions[i]=Vector2(float(state.data.crew[i].x),float(state.data.crew[i].y))
 	grid.region=Rect2i(1,1,14,14);grid.cell_size=Vector2.ONE
@@ -33,10 +36,11 @@ func setup(value: GenesisState):
 		if blocked(positions[i]):positions[i]=Vector2(5.5+i,8.2)
 
 func blocked(v: Vector2) -> bool:
+	if state.data.exploration.zone=="archive" and v.x>=13:return true
 	if v.x<1.1 or v.y<1.1 or v.x>14.2 or v.y>14.2:return true
-	if v.x>=11 and v.y>=3 and v.y<=7.8:return true
+	if state.data.exploration.zone=="workshop" and v.x>=11 and v.y>=3 and v.y<=7.8:return true
 	# Two back walls; the front of the cutaway remains open.
-	if (v.x>=3 and v.x<=3.3 and v.y>=3 and v.y<=9) or (v.y>=3 and v.y<=3.3 and v.x>=3 and v.x<=10):return true
+	if state.data.exploration.zone=="workshop" and ((v.x>=3 and v.x<=3.3 and v.y>=3 and v.y<=9) or (v.y>=3 and v.y<=3.3 and v.x>=3 and v.x<=10)):return true
 	for prop in props:
 		if Rect2(prop.pos-Vector2(.12,.12),prop.size+Vector2(.24,.24)).has_point(v):return true
 	return false
@@ -102,6 +106,7 @@ func nearest() -> String:
 
 func _draw():
 	if state==null:return
+	if state.data.exploration.zone!="workshop":draw_expedition();return
 	draw_rect(Rect2(0,0,1280,720),Color("203b37"))
 	poly([Vector2(90,338),Vector2(640,57),Vector2(1190,338),Vector2(640,626)],"19342f")
 	box(Vector2(1,1),Vector2(14,14),12,"6b8b61","466445","395a42")
@@ -157,4 +162,35 @@ func _draw():
 	for i in 8:
 		var p=Vector2(320+i*90,240+sin(art_time*.7+i)*70+i*19)
 		pixel(p.x,p.y,3,3,"d7d5a0")
+	if state.data.night:draw_rect(Rect2(0,0,1280,720),Color("142c4b55"))
+
+
+func draw_expedition():
+	var forest=state.data.exploration.zone=="mosswood"
+	draw_rect(Rect2(0,0,1280,720),Color("172e2b" if forest else "182d39"))
+	box(Vector2(1,1),Vector2(14,14),12,"567b55" if forest else "a4aa94","385943" if forest else "6e817f","294a38" if forest else "466b78")
+	for x in range(1,15):
+		for y in range(1,15):
+			var v=Vector2(x,y)
+			var color=("819965" if (x+y)%2 else "758e61") if forest else ("bcc5aa" if (x+y)%2 else "afbaa1")
+			poly([iso(v,12),iso(v+Vector2(1,0),12),iso(v+Vector2.ONE,12),iso(v+Vector2(0,1),12)],color)
+			if (x*13+y*7)%6==0:
+				var p=iso(v+Vector2(.4,.6),14);pixel(p.x,p.y,5,3,"b4c49a" if forest else "839b9d")
+	for y in range(7,14):box(Vector2(6,y),Vector2(1.5,1),14,"c2b790","9d9477","827d66")
+	if not forest:
+		for y in range(1,15):box(Vector2(13,y),Vector2(2,1),14,"5c929e","416a78","375d6d")
+		for i in range(4):box(Vector2(10+i*.4,2),Vector2(.25,1.4),36+i*9,"a9b7ad","677f82","526b70")
+	var entities=props.duplicate(true)
+	for i in 2:entities.append({"kind":"actor","pos":positions[i],"index":i})
+	for p in [Vector2(2,2),Vector2(2,11),Vector2(11,12),Vector2(11,2)]:entities.append({"kind":"tree","pos":p})
+	entities.sort_custom(func(a,b):return a.pos.x+a.pos.y<b.pos.x+b.pos.y)
+	for entity in entities:
+		match entity.kind:
+			"tree":tree(entity.pos,1 if not forest else 0)
+			"desk":desk(entity.pos)
+			"discovery":
+				box(entity.pos,Vector2(1,1),30,"cabb8d","8b9272","65775f")
+				var p=iso(entity.pos+Vector2(.5,.5),36);pixel(p.x-12,p.y-7,24,12,"ede8d0");pixel(p.x,p.y-7,2,12,"748775")
+			"waystone":lamp(entity.pos)
+			"actor":companion(entity.pos,int(entity.index),int(state.data.selected)==int(entity.index),actions[int(entity.index)]=="Walking",actions[int(entity.index)])
 	if state.data.night:draw_rect(Rect2(0,0,1280,720),Color("142c4b55"))
