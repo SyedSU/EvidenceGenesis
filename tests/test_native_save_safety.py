@@ -38,6 +38,33 @@ def windows_dialogs(pid):
     user.EnumWindows(top,0)
     return found
 
+def pause_and_kill(command,environment,marker,log_path,wait_seconds=15):
+    reached=False;dialogs=[];boundary=None;killed=False
+    # Drain startup output directly to a file; waiting on a marker while PIPEs
+    # are unread can block the child before it reaches the tested boundary.
+    with log_path.open('wb') as output:
+        process=subprocess.Popen(command,env=environment,stdout=output,stderr=subprocess.STDOUT)
+        try:
+            deadline=time.monotonic()+wait_seconds
+            while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
+            reached=marker.exists()
+            if reached:boundary=json.loads(marker.read_text())
+            else:dialogs=windows_dialogs(process.pid)
+        finally:
+            if process.poll() is None:process.kill();killed=True
+            process.wait(timeout=10)
+    return {'reached':reached,'boundary':boundary,'pid':process.pid,'killed':killed,'output':log_path.read_text(encoding='utf-8',errors='replace'),'dialogs':dialogs}
+
+class CrashHarnessTests(unittest.TestCase):
+    def test_child_startup_output_cannot_block_boundary_detection(self):
+        with tempfile.TemporaryDirectory(prefix='genesis-noisy-child-') as temp:
+            base=Path(temp);marker=base/'marker.json'
+            code="import sys,os,json,time;from pathlib import Path;sys.stdout.write('x'*100000);sys.stdout.flush();Path(sys.argv[1]).write_text(json.dumps({'phase':'ready','processId':os.getpid()}));time.sleep(120)"
+            result=pause_and_kill([sys.executable,'-c',code,str(marker)],os.environ.copy(),marker,base/'child.log',wait_seconds=2)
+            self.assertTrue(result['reached'],'Undrained child pipes blocked marker creation')
+            self.assertEqual(result['boundary']['processId'],result['pid']);self.assertTrue(result['killed'])
+            self.assertEqual(result['output'],'x'*100000)
+
 ROOT=Path(__file__).resolve().parents[1]
 
 class NativeSaveSafetyTests(unittest.TestCase):
@@ -100,27 +127,15 @@ class NativeSaveSafetyTests(unittest.TestCase):
             with self.subTest(kind=kind,phase=phase):
                 data=self.base/(kind+'-'+phase);args=['--script','res://tests/save_crash_fixture.gd','--','--phase='+phase]
                 if kind=='index':args.append('--index')
-                process=subprocess.Popen([self.crash_engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
                 marker=data/'EvidenceGenesis/boundary.json'
-                reached=False;dialogs=[]
-                try:
-                    deadline=time.monotonic()+15
-                    while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
-                    reached=marker.exists()
-                    if not reached:dialogs=windows_dialogs(process.pid)
-                    if reached:
-                        boundary=json.loads(marker.read_text())
-                        self.assertEqual(boundary['phase'],phase)
-                        self.assertEqual(boundary['processId'],process.pid,'Kill target must be the actual Godot process')
-                finally:
-                    if process.poll() is None:process.kill()
-                    stdout,stderr=process.communicate(timeout=10)
-                    if process.stdout:process.stdout.close()
-                    if process.stderr:process.stderr.close()
+                result=pause_and_kill([self.crash_engine,'--headless','--path',str(self.project),*args],self.environment(data),marker,self.base/(kind+'-'+phase+'-child.log'))
                 actual=list(data.rglob('*')) if data.exists() else []
                 diagnostic=''.join(path.read_text(encoding='utf-8',errors='replace') for path in data.rglob('godot.log')) if data.exists() else ''
-                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr+'; log='+diagnostic+'; dialogs='+str(dialogs))
-                if self.evidence:(self.evidence/(kind+'-'+phase+'-killed.log')).write_text(stdout+stderr)
+                self.assertTrue(result['reached'],'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+result['output']+'; log='+diagnostic+'; dialogs='+str(result['dialogs']))
+                self.assertTrue(result['killed'],'Child must actually be killed at the boundary')
+                self.assertEqual(result['boundary']['phase'],phase)
+                self.assertEqual(result['boundary']['processId'],result['pid'],'Kill target must be the actual Godot process')
+                if self.evidence:(self.evidence/(kind+'-'+phase+'-killed.log')).write_text(result['output'])
                 saved=data/'EvidenceGenesis/crash.json'
                 candidate=saved if saved.exists() else Path(str(saved)+'.backup')
                 self.assertTrue(candidate.exists(),'No committed save or recovery backup')
