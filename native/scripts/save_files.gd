@@ -1,10 +1,24 @@
 class_name GenesisSaveFiles
 extends RefCounted
 
-# Platform adapter: all replacements/byte writes have checked outcomes. Godot's
-# flush is not disk fsync, and Windows rename is not atomic overwrite; see docs.
+# Native persistence is mandatory. No buffered-only/platform rename fallback.
+var uncertain=false
+
+func native_available() -> bool:
+	return ClassDB.class_exists("GenesisDurableFiles")
+
+func sync_file(path: String) -> Error:
+	if not native_available():return ERR_UNAVAILABLE
+	return OK if ClassDB.class_call_static("GenesisDurableFiles","sync_file",ProjectSettings.globalize_path(path))==0 else FAILED
+
+func native_replace(source: String, destination: String) -> int:
+	return ClassDB.class_call_static("GenesisDurableFiles","replace_file",ProjectSettings.globalize_path(source),ProjectSettings.globalize_path(destination))
+
 func replace(source: String, destination: String) -> Error:
-	return DirAccess.rename_absolute(ProjectSettings.globalize_path(source),ProjectSettings.globalize_path(destination))
+	if not native_available():return ERR_UNAVAILABLE
+	var status=native_replace(source,destination)
+	if status==2:uncertain=true
+	return OK if status==0 else FAILED
 
 func store_checked(path: String, bytes: PackedByteArray) -> String:
 	var file=FileAccess.open(path,FileAccess.WRITE)
@@ -16,6 +30,7 @@ func store_checked(path: String, bytes: PackedByteArray) -> String:
 	if not stored or status!=OK:return "The save stage could not be written. Check free space."
 	var readback=read_bytes(path,bytes.size())
 	if not readback.ok or readback.bytes!=bytes:return "The save stage failed byte verification."
+	if sync_file(path)!=OK:return "The save stage could not be synced to disk. Previous files preserved."
 	return ""
 
 func read_bytes(path: String, limit: int) -> Dictionary:
@@ -83,11 +98,14 @@ func read_json(path: String, validator: Callable, limit: int) -> Dictionary:
 func restore_backup(stage: String, backup: String) -> String:
 	if stage.is_empty():return ""
 	if replace(stage,backup)==OK:return ""
+	if uncertain:return " Backup rollback sync failed. Previous backup is at "+backup+"; durability is uncertain. Reload before saving."
 	# A failed Windows move may already have removed the destination. The
 	# verified stage is now a recovery copy, not disposable operation debris.
 	return " Previous backup retained in recovery file: "+stage
 
 func write_json(path: String, text: String, validator: Callable, limit: int) -> String:
+	if uncertain:return "Save durability is uncertain. Reload the workshop before saving again; recovery files are preserved."
+	if not native_available():return "Native save support is unavailable. Reinstall the complete game package before saving."
 	var bytes=text.to_utf8_buffer()
 	if bytes.is_empty() or bytes.size()>limit or not decode(bytes,validator).ok:return "Invalid or oversized save data. Previous files preserved."
 	var backup=path+".backup"
@@ -114,9 +132,11 @@ func write_json(path: String, text: String, validator: Callable, limit: int) -> 
 		error=store_checked(backup_stage,previous)
 		if not error.is_empty():cleanup(stage);cleanup(backup_stage);cleanup(rollback_stage);return "Backup failed. "+error
 		if replace(backup_stage,backup)!=OK:
+			if uncertain:return "Backup replacement sync failed. Active original preserved at "+path+"; reload before saving. Recovery stage: "+rollback_stage+". Uncommitted candidate: "+stage
 			var recovery=restore_backup(rollback_stage,backup)
 			cleanup(stage);cleanup(backup_stage);return "Backup replacement failed. Active original preserved."+recovery
 	if replace(stage,path)!=OK:
+		if uncertain:return "Save replacement sync failed. Disk state may have advanced; reload before saving. Previous generation: "+backup+(". Older recovery stage: "+rollback_stage if not rollback_stage.is_empty() else "")
 		var restoration=""
 		if not previous.is_empty() and not FileAccess.file_exists(path):restoration=store_checked(path,previous)
 		# Keep the verified original in backup if restoring the active path fails.

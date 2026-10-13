@@ -14,3 +14,7 @@ native/.godot/
 *.exe
 *.dll
 *.tmp-*
+*.so
+*.obj
+*.lib
+*.exp

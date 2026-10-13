@@ -1,0 +1,7 @@
+# First-party save persistence adapter
+
+Two static C ABI methods, no network/subprocesses. Internal abstract class is intentionally hidden from Godot’s editor class UI. Supported builds: Linux/Windows x64 with Godot4.7.2 standard float_64 ABI (String and StringName8-byte aligned opaque storage, checked by the pinned API dump). Build with `python scripts/build_save_adapter.py`; missing library blocks saving. Sources/header are excluded from export; the platform library is a root game component file and hash-covered by existing package manifests.
+
+Godot header generated using `Godot_v4.7.2-stable_linux.x86_64 --headless --dump-gdextension-interface`, verified official archive SHA256cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4. Source pin ed1daf0bf001b61586d9930840f2f1394092c079, release2026-08-18. Header and immutable LICENSE reviewed; retained MIT notice permits this use in the original application. The build verifies the exact header digest in build_save_adapter.py. OS sync/rename APIs are used directly; no third-party binding library is adopted.
+
+Status0: requested OS persistence completed;1: failure before replacement;2: replacement happened but subsequent sync/close failed. Caller must preserve recovery files and lock out writes after2. No broad physical power-loss/concurrency/hostile-directory guarantee. See docs/SAVE-SAFETY.md and canonical state for acceptance limits.

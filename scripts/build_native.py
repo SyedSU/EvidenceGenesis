@@ -1,5 +1,6 @@
-"""Build the self-contained Windows game; requires Python only on the build machine."""
-import argparse, hashlib, json, os, re, shutil, subprocess, tempfile, urllib.request, zipfile
+"""Build the self-contained Windows game; requires Python and an x64 C compiler on the build machine."""
+import argparse, hashlib, json, os, re, shutil, subprocess, sys, tempfile, urllib.request, zipfile
+from build_save_adapter import build_adapter
 from component_packages import VERSION, emit_candidates, deterministic_zip, verify_full_package_parity
 from pathlib import Path
 
@@ -113,10 +114,16 @@ def main():
   target=base/'export_templates/4.7.2.stable';target.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(templates) as z:
    for name in ['windows_release_x86_64.exe','windows_debug_x86_64.exe','version.txt']:(target/name).write_bytes(z.read('templates/'+name))
+  adapter=build_adapter(ROOT/'native')
+  provenance['saveAdapter']={'kind':'first-party Godot C ABI','platform':os.name,'library':adapter.name,'sha256':digest(adapter),'godotSourceCommit':GODOT_COMMIT,'compilerPinVerified':False}
   run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'],isolated=False)
+  run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/save_adapter_test.gd'],'GENESIS_SAVE_ADAPTER_OK')
+  test_env=os.environ.copy();test_env['GENESIS_TEST_GODOT']=str(godot)
+  subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_*save*.py','-v'],cwd=ROOT,env=test_env,check=True,timeout=240)
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/state_test.gd'],'GENESIS_STATE_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/startup_test.gd','--','--no-brain'],'GENESIS_STARTUP_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')],isolated=False)
+  if os.name=='nt' and not (folder/'genesis_save.dll').is_file():raise RuntimeError('Export omitted the required native save adapter')
   runtime=args.runtime or download(f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip',cache/'llama-win.zip')
   if digest(runtime)!=RUNTIME_SHA:raise RuntimeError('Runtime checksum mismatch')
   with zipfile.ZipFile(runtime) as z:z.extractall(folder/'brain')
@@ -152,7 +159,7 @@ def main():
   for notice in provenance['licenses']:
    target=stages[notice['component']]/notice['packagePath'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(folder/'licenses'/notice['name'],target)
   provenance['fullPackage']={'path':args.output.name,'size':args.output.stat().st_size,'sha256':digest(args.output),'files':[{'path':'EvidenceGenesis/'+item.relative_to(folder).as_posix(),'size':item.stat().st_size,'sha256':digest(item)} for item in sorted(folder.rglob('*')) if item.is_file()]}
-  provenance['verification']={'godotImport':True,'stateTests':True,'startupRestoreTests':True,'packagedPanelSmoke':True,'actualBundledModelGeneration':True}
+  provenance['verification']={'godotImport':True,'stateTests':True,'startupRestoreTests':True,'packagedPanelSmoke':True,'actualBundledModelGeneration':True,'nativeSaveAdapterTests':True}
   components=ROOT/'build/components'
   if components.exists():shutil.rmtree(components)
   report=emit_candidates(stages,components,provenance)

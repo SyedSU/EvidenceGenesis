@@ -7,6 +7,9 @@ import subprocess
 import tempfile
 import time
 import unittest
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
+from build_save_adapter import build_adapter
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -20,6 +23,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
         cls.workspace=tempfile.TemporaryDirectory(prefix='genesis-save-tests-')
         cls.base=Path(cls.workspace.name);cls.project=cls.base/'native'
         shutil.copytree(ROOT/'native',cls.project,ignore=shutil.ignore_patterns('.godot'))
+        build_adapter(cls.project)
         cls.evidence=Path(os.environ['GENESIS_SAVE_EVIDENCE_DIR']) if os.environ.get('GENESIS_SAVE_EVIDENCE_DIR') else None
         if cls.evidence:cls.evidence.mkdir(parents=True,exist_ok=True)
         cls.run_engine('import',['--editor','--import','--quit'],cls.base/'import-data')
@@ -45,8 +49,21 @@ class NativeSaveSafetyTests(unittest.TestCase):
         text=self.run_engine('native-state',['--script','res://tests/state_test.gd'],self.base/'state-data')
         self.assertIn('GENESIS_STATE_TEST_OK',text);self.assertIn('0 failed',text)
 
+    def test_native_adapter_abi_and_missing_library(self):
+        text=self.run_engine('adapter-abi',['--script','res://tests/save_adapter_test.gd'],self.base/'adapter-data')
+        self.assertIn('GENESIS_SAVE_ADAPTER_OK',text)
+        project=self.base/'missing-native'
+        shutil.copytree(self.project,project,ignore=shutil.ignore_patterns('.godot','genesis_save.so','genesis_save.dll'))
+        environment=self.environment(self.base/'missing-data')
+        for name,args in [('missing-import',['--editor','--import','--quit']),('missing-adapter',['--script','res://tests/save_adapter_test.gd','--','--expect-missing'])]:
+            result=subprocess.run([self.engine,'--headless','--path',str(project),*args],env=environment,capture_output=True,text=True,timeout=60)
+            output=result.stdout+result.stderr
+            if self.evidence:(self.evidence/(name+'.log')).write_text(output)
+            self.assertEqual(result.returncode,0,output);self.assertNotIn('SCRIPT ERROR',output)
+            if name=='missing-adapter':self.assertIn('GENESIS_MISSING_ADAPTER_OK',output)
+
     def interrupted_writes(self,kind):
-        for phase in ['after_stage','after_backup','after_delete','after_commit']:
+        for phase in ['after_stage','after_backup','before_replace','after_delete','after_commit']:
             with self.subTest(kind=kind,phase=phase):
                 data=self.base/(kind+'-'+phase);args=['--script','res://tests/save_crash_fixture.gd','--','--phase='+phase]
                 if kind=='index':args.append('--index')

@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "genesis_save_init"
+compatibility_minimum = "4.7.2"
+reloadable = false
+
+[libraries]
+windows.x86_64 = "res://genesis_save.dll"
+linux.x86_64 = "res://genesis_save.so"

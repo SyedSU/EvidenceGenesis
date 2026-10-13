@@ -14,6 +14,7 @@ class InterruptedStorage extends GenesisSaveFiles:
 	func replace(source: String, destination: String) -> Error:
 		if destination=="user://crash.json" and phase=="after_delete":
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(destination));boundary("after_delete")
+		if destination=="user://crash.json":boundary("before_replace")
 		var result=super.replace(source,destination)
 		if result==OK:
 			if destination=="user://crash.json.backup":boundary("after_backup")

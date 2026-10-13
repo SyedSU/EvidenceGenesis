@@ -37,6 +37,29 @@ class PartialBackupRestore extends FailAllMoves:
 			super.store_checked(path,bytes.slice(0,bytes.size()/2));return "Injected partial backup recovery."
 		return super.store_checked(path,bytes)
 
+class UncertainMove extends GenesisSaveFiles:
+	var victim=""
+	func native_replace(source: String, destination: String) -> int:
+		var status=super.native_replace(source,destination)
+		return 2 if status==0 and destination==victim else status
+
+class UncertainRollback extends GenesisSaveFiles:
+	var active=""
+	var moves=0
+	func native_replace(source: String, destination: String) -> int:
+		if destination==active:return 1
+		var status=super.native_replace(source,destination)
+		if destination==active+".backup":
+			moves+=1
+			if status==0 and moves==2:return 2
+		return status
+
+class FailSync extends GenesisSaveFiles:
+	func sync_file(_path: String) -> Error:return FAILED
+
+class MissingAdapter extends GenesisSaveFiles:
+	func native_available() -> bool:return false
+
 func retained_bytes(prefix: String, bytes: String) -> bool:
 	for name in DirAccess.get_files_at("user://save-safety"):
 		if name.begins_with(prefix) and FileAccess.get_file_as_string("user://save-safety/"+name)==bytes:return true
@@ -48,6 +71,42 @@ func check(condition: bool, label: String):
 
 func run() -> bool:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://save-safety"))
+	var sync_state=GenesisState.new();sync_state.save_path="user://save-safety/sync-failure.json"
+	check(sync_state.save(),"sync baseline")
+	var sync_before=FileAccess.get_file_as_string(sync_state.save_path)
+	sync_state.storage=FailSync.new();sync_state.data.stars=4
+	check(not sync_state.save(),"failed native disk sync rejects save")
+	check(FileAccess.get_file_as_string(sync_state.save_path)==sync_before,"failed native sync preserves active bytes")
+	check(not FileAccess.file_exists(sync_state.save_path+".backup"),"failed native sync never advances backup")
+	var absent=GenesisState.new();absent.save_path="user://save-safety/adapter-missing.json";absent.storage=MissingAdapter.new()
+	check(not absent.save(),"missing native adapter refuses buffered fallback")
+	check(not FileAccess.file_exists(absent.save_path),"missing adapter creates no active save")
+	for boundary in ["primary","backup"]:
+		var unknown=GenesisState.new();unknown.save_path="user://save-safety/uncertain-"+boundary+".json"
+		check(unknown.save(),"uncertain "+boundary+" baseline")
+		unknown.data.stars=1;check(unknown.save(),"uncertain "+boundary+" second generation")
+		var old=FileAccess.get_file_as_string(unknown.save_path)
+		var older=FileAccess.get_file_as_string(unknown.save_path+".backup")
+		var uncertain_adapter=UncertainMove.new();uncertain_adapter.victim=unknown.save_path+(".backup" if boundary=="backup" else "")
+		unknown.storage=uncertain_adapter;unknown.data.stars=2
+		check(not unknown.save(),"uncertain "+boundary+" sync reports failure")
+		check(uncertain_adapter.uncertain,"uncertain "+boundary+" locks further writes")
+		check(FileAccess.get_file_as_string(unknown.save_path+".backup")==old,"uncertain "+boundary+" retains previous generation in backup")
+		check(retained_bytes("uncertain-"+boundary+".json.backup.tmp-",older),"uncertain "+boundary+" retains older recovery stage")
+		var current=FileAccess.get_file_as_string(unknown.save_path)
+		check(not unknown.save() and FileAccess.get_file_as_string(unknown.save_path)==current,"uncertain "+boundary+" repeated save cannot advance disk")
+		check(unknown.last_error.contains("Reload"),"uncertain "+boundary+" gives reload instruction")
+	var rollback_unknown=GenesisState.new();rollback_unknown.save_path="user://save-safety/uncertain-rollback.json"
+	check(rollback_unknown.save(),"uncertain rollback baseline")
+	var rollback_older=FileAccess.get_file_as_string(rollback_unknown.save_path)
+	rollback_unknown.data.stars=1;check(rollback_unknown.save(),"uncertain rollback second generation")
+	var rollback_before=FileAccess.get_file_as_string(rollback_unknown.save_path)
+	var rollback_adapter=UncertainRollback.new();rollback_adapter.active=rollback_unknown.save_path;rollback_unknown.storage=rollback_adapter;rollback_unknown.data.stars=2
+	check(not rollback_unknown.save(),"uncertain rollback reports failure")
+	check(rollback_adapter.uncertain,"uncertain rollback locks further writes")
+	check(FileAccess.get_file_as_string(rollback_unknown.save_path)==rollback_before and FileAccess.get_file_as_string(rollback_unknown.save_path+".backup")==rollback_older,"uncertain rollback actual generations preserved")
+	check(rollback_unknown.last_error.contains("Reload") and rollback_unknown.last_error.contains(rollback_unknown.save_path+".backup"),"uncertain rollback immediately identifies backup and reload")
+	check(not rollback_unknown.last_error.contains(".tmp-"),"uncertain rollback never names consumed stage as retained")
 	var state=GenesisState.new();state.save_path="user://save-safety/backup-blocked.json"
 	check(state.save(),"initial save")
 	var original=FileAccess.get_file_as_string(state.save_path)
