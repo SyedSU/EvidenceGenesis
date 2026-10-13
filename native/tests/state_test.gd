@@ -128,5 +128,6 @@ func _initialize():
 	bad_exploration=explorer.data.duplicate(true);bad_exploration.exploration.zone="../saves";assert(not explorer.valid(bad_exploration))
 	explorer.data.garden=true;explorer.save_enabled=false;var before_travel=explorer.data.duplicate(true);assert(not explorer.travel("mosswood") and explorer.data==before_travel)
 	explorer.data.exploration.zone="mosswood";assert(not explorer.discover() and explorer.data.exploration.discoveries.is_empty())
+	if not preload("res://tests/save_safety_test.gd").new().run():quit(1);return
 	print("GENESIS_STATE_TEST_OK: memory, approval, HTML escaping, saves, v2 migration, mission rewards, care, upgrades, levels")
 	quit()

@@ -39,10 +39,11 @@ func settings():
 	box.add_child(GenesisUI.label("Document maker turns notes into drafts; Reviewer identifies gaps. Energy is spent only on delivered work. Every three approvals earns a level; levels describe practice, not model training.",14))
 	var volume=HSlider.new();volume.min_value=0;volume.max_value=1;volume.step=0.05;volume.value=game.state.data.settings.volume
 	GenesisUI.field(box,"Music volume",volume)
-	volume.value_changed.connect(func(value):game.state.data.settings.volume=value;game.apply_settings();game.state.save())
+	volume.value_changed.connect(func(value):
+		if not game.commit_change(func():game.state.data.settings.volume=value):volume.set_value_no_signal(game.state.data.settings.volume))
 	var text=OptionButton.new();text.add_item("Standard text");text.add_item("Large text");text.select(1 if game.state.data.settings.text_scale>1 else 0);box.add_child(text)
-	text.item_selected.connect(func(index):game.state.data.settings.text_scale=1.15 if index==1 else 1.0;game.apply_settings();game.state.save();settings())
-	box.add_child(GenesisUI.button("Reduce ambient motion / restore",func():game.state.data.settings.motion=not game.state.data.settings.motion;game.state.save()))
+	text.item_selected.connect(func(index):game.commit_change(func():game.state.data.settings.text_scale=1.15 if index==1 else 1.0);settings())
+	box.add_child(GenesisUI.button("Reduce ambient motion / restore",func():game.commit_change(func():game.state.data.settings.motion=not game.state.data.settings.motion)))
 	box.add_child(GenesisUI.label("Controls: WASD/arrows or click to move · E interact · Tab switch · Escape close panel. Keyboard movement and click are both available; remapping is not implemented.",13))
 	var name=GenesisUI.input("Companion name",24);name.text=game.state.actor().name
 	var role=OptionButton.new();role.add_item("Document maker");role.add_item("Reviewer");role.custom_minimum_size.y=44
@@ -50,15 +51,11 @@ func settings():
 	GenesisUI.field(box,"Selected companion",name);GenesisUI.field(box,"Role",role)
 	box.add_child(GenesisUI.button("Save companion",func():
 		if name.text.strip_edges().is_empty():game.toast("Give your companion a name.");return
-		game.state.actor().name=name.text.strip_edges();game.state.actor().role=role.get_item_text(role.selected);game.state.save();game.refresh_hud();game.toast("Companion updated.")))
+		game.commit_change(func():game.state.actor().name=name.text.strip_edges();game.state.actor().role=role.get_item_text(role.selected),"Companion updated.")))
 	box.add_child(GenesisUI.button("Feed a berry",func():game.toast(game.state.feed());game.refresh_hud()))
-	box.add_child(GenesisUI.button("Switch morning / evening",func():game.state.data.night=not game.state.data.night;game.state.save();game.toast("Lighting changed.")))
-	box.add_child(GenesisUI.button("Music on / off",func():
-		game.state.data.sound=not game.state.data.sound
-		if game.state.data.sound:game.audio.play()
-		else:game.audio.stop()
-		game.state.save()))
-	box.add_child(GenesisUI.button("Fullscreen / window",func():game.state.data.settings.fullscreen=not game.state.data.settings.fullscreen;game.apply_settings();game.state.save()))
+	box.add_child(GenesisUI.button("Switch morning / evening",func():game.commit_change(func():game.state.data.night=not game.state.data.night,"Lighting changed.")))
+	box.add_child(GenesisUI.button("Music on / off",func():game.commit_change(func():game.state.data.sound=not game.state.data.sound)))
+	box.add_child(GenesisUI.button("Fullscreen / window",func():game.commit_change(func():game.state.data.settings.fullscreen=not game.state.data.settings.fullscreen)))
 	box.add_child(GenesisUI.label(game.brain.status,13,GenesisUI.MUTED))
 	if game.brain.needs_runtime:
 		box.add_child(GenesisUI.label("Install the official Microsoft x64 runtime once, then restart this game. The setup download needs internet. Your companions and template mode work while AI is unavailable.",14))

@@ -126,9 +126,18 @@ func close_panel():
 func toast(text: String):
 	message.text=text;toast_timer=7
 
+func commit_change(change: Callable, success="") -> bool:
+	var previous=state.data.duplicate(true)
+	change.call()
+	var saved=state.commit(previous)
+	apply_settings();refresh_hud()
+	if not saved:toast(state.last_error)
+	elif not success.is_empty():toast(success)
+	return saved
+
 func select_actor(index: int):
 	if not pending.is_empty():toast("Wait for the current task before changing companions.");return
-	state.data.selected=index;close_panel();refresh_hud();state.save()
+	if commit_change(func():state.data.selected=index):close_panel()
 
 func interaction(kind: String):
 	if not pending.is_empty():toast("Your companion is working. You can review documents when it finishes.");return
@@ -145,14 +154,16 @@ func interaction(kind: String):
 			toast(state.actor().name+" is taking a rest…")
 			await get_tree().create_timer(3).timeout
 			if state!=resting_state:return
-			state.rest(resting);world.actions[resting]="Idle";refresh_hud();toast("Rest restored 30 energy.")
+			var saved=state.rest(resting);world.actions[resting]="Idle";refresh_hud();toast("Rest restored 30 energy." if saved else state.last_error)
 		"bush":toast(state.harvest());refresh_hud()
 		"plant":garden_panel()
-		"lamp":state.data.night=not state.data.night;state.save();toast("Evening light." if state.data.night else "Morning light.")
+		"lamp":commit_change(func():state.data.night=not state.data.night,"Lighting changed.")
 
 func _process(delta):
 	autosave+=delta
-	if autosave>20:autosave=0;state.save()
+	if autosave>20:
+		autosave=0
+		if state.save_enabled and not state.save():toast(state.last_error)
 	if toast_timer>0:
 		toast_timer-=delta
 		if toast_timer<=0:message.text="Click to walk · WASD / arrows · E to interact · Tab to switch"
@@ -190,7 +201,7 @@ func welcome_panel():
 	box.add_child(GenesisUI.label("Choose Milo or Pip. Walk with WASD, arrow keys, or a click on the ground. Press E near furniture to interact.",16))
 	box.add_child(GenesisUI.label("The bookshelf opens lessons. The desk creates documents. The bed restores energy. The berry bush replenishes your basket.",16))
 	box.add_child(GenesisUI.label("Open Missions for goals and rewards. Workshop lets you add a flower garden, lanterns and a reading corner. The included local model starts automatically. You can use template mode while it loads. No paid AI service is required.",15))
-	box.add_child(GenesisUI.button("Begin our adventure",func():state.data.seen_intro=true;state.save();close_panel(),true))
+	box.add_child(GenesisUI.button("Begin our adventure",func():if commit_change(func():state.data.seen_intro=true):close_panel(),true))
 
 func ai_finished(content: String, error: String):
 	if pending.is_empty():return
@@ -329,7 +340,7 @@ func apply_settings():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if state.data.settings.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 
 func shutdown():
-	state.save()
+	if state.save_enabled and not state.save():toast(state.last_error);return
 	if audio!=null:audio.stop();audio.stream=null
 	await get_tree().create_timer(0.1).timeout
 	get_tree().quit()

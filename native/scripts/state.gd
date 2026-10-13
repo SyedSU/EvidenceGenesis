@@ -6,6 +6,7 @@ var last_error = ""
 var save_enabled = true
 const SAVE = "user://workshop.json"
 var save_path = SAVE
+var storage = GenesisSaveFiles.new()
 
 func _init():
 	data = fresh()
@@ -97,35 +98,29 @@ func approve(doc: Dictionary) -> bool:
 func feed() -> String:
 	if int(data.berries)<=0: return "The basket is empty. Visit the berry bush."
 	if int(actor().energy)>=100: return actor().name+" is already full of energy."
+	var previous=data.duplicate(true)
 	data.berries-=1; actor().energy=mini(100,int(actor().energy)+22)
-	data.progress.fed+=1; event(actor().name+" enjoyed a berry."); save(); return "+22 energy. Thank you for the berry!"
+	data.progress.fed+=1; event(actor().name+" enjoyed a berry.")
+	return "+22 energy. Thank you for the berry!" if commit(previous) else last_error
 
 func harvest() -> String:
 	var now = int(Time.get_unix_time_from_system())
 	if now-int(data.harvest_at)<30: return "New berries will be ready in "+str(30-(now-int(data.harvest_at)))+" seconds."
-	data.harvest_at=now; data.berries=mini(50,int(data.berries)+3); save(); return "You gathered 3 berries for your companions."
+	var previous=data.duplicate(true)
+	data.harvest_at=now; data.berries=mini(50,int(data.berries)+3)
+	return "You gathered 3 berries for your companions." if commit(previous) else last_error
 
 func save() -> bool:
-	if not save_enabled: return false
-	var file=FileAccess.open(save_path+".tmp",FileAccess.WRITE)
-	if file==null: last_error="Save unavailable. Back up your workshop from Settings."; return false
-	file.store_string(JSON.stringify(data,"\t")); file.close()
-	if FileAccess.file_exists(save_path):
-		DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path),ProjectSettings.globalize_path(save_path+".backup"))
-	var result=DirAccess.rename_absolute(ProjectSettings.globalize_path(save_path+".tmp"),ProjectSettings.globalize_path(save_path))
-	if result!=OK: last_error="Could not save. Back up from Settings."; return false
-	return true
+	if not save_enabled:last_error="Save disabled to preserve the original. Restore a known backup from Settings.";return false
+	last_error=storage.write_json(save_path,JSON.stringify(data,"\t"),valid,1500000)
+	return last_error.is_empty()
 
 func load_save():
-	if not FileAccess.file_exists(save_path): return
-	var file=FileAccess.open(save_path,FileAccess.READ)
-	if file==null or file.get_length()>1500000:
-		last_error="Save unreadable. Original file preserved."; save_enabled=false; return
-	var parser=JSON.new()
-	var parsed: Variant=null
-	if parser.parse(file.get_as_text())==OK:parsed=parser.data
-	if valid(parsed): adopt(parsed)
-	else: last_error="Invalid save. Original file preserved; use Settings to restore a backup."; save_enabled=false
+	var record=storage.read_json(save_path,valid,1500000)
+	if record.get("missing",false):return
+	last_error=record.error
+	if record.ok:adopt(record.data)
+	else:save_enabled=false
 
 func valid(s: Variant) -> bool:
 	if not s is Dictionary:return false
@@ -203,10 +198,11 @@ func adopt(value: Dictionary):
 	for task in data.tasks:
 		if task.status in ["queued","running"]:task.status="failed";task.error="Interrupted before completion. Notes preserved; retry intentionally."
 
-func rest(index: int):
+func rest(index: int) -> bool:
+	var previous=data.duplicate(true)
 	data.crew[index].energy=mini(100,int(data.crew[index].energy)+30)
 	data.progress.rested+=1
-	event(data.crew[index].name+" rested at the workshop.");save()
+	event(data.crew[index].name+" rested at the workshop.");return commit(previous)
 
 func level(index: int) -> int:
 	return 1+int(int(data.crew[index].approved)/3.0)
@@ -249,11 +245,11 @@ func buy_upgrade(id: String) -> String:
 	return "Your workshop has a new addition!"
 
 func queue_task(title: String, notes: String, index: int, mode: String) -> Dictionary:
+	var previous=data.duplicate(true)
 	var task={"id":str(Time.get_ticks_usec())+"-"+str(randi()),"title":title,"notes":notes,"actor":index,"mode":mode,"status":"queued","error":"","document":""}
 	data.tasks.push_front(task)
 	if data.tasks.size()>60:data.tasks.resize(60)
-	if not save():
-		data.tasks.erase(task);last_error="Task could not be saved. Choose a writable workshop before creating.";return {}
+	if not commit(previous):return {}
 	return task
 
 func task_status(id: String, status: String, error="", document="") -> bool:
@@ -271,7 +267,7 @@ func commit(previous: Dictionary) -> bool:
 			if doc.id==previous.documents[i].id:
 				doc.clear();doc.merge(previous.documents[i],true);previous.documents[i]=doc;break
 	data=previous
-	last_error="Changes could not be saved. Your previous workshop state was kept. Back up from Settings and check save folder permissions."
+	last_error="Changes could not be saved. Your previous workshop state was kept. "+last_error
 	return false
 
 

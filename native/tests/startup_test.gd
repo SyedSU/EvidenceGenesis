@@ -28,4 +28,13 @@ func run():
 	game.state.save_enabled=false;game.panels.export_selected("user://restore-test.json")
 	assert(game.state.data.stars==previous.stars and not game.message.text.contains("Workshop restored"))
 	print("GENESIS_RESTORE_TEST_OK: menu restore creates profile, failed restore rolls back")
+	game.panels.settings()
+	var before_settings=game.state.data.duplicate(true)
+	for field in game.find_children("*","LineEdit",true,false):
+		if field.placeholder_text=="Companion name":field.text="Must not be saved"
+	for button in game.find_children("*","Button",true,false):
+		if button.text=="Save companion":button.pressed.emit();break
+	assert(game.state.data==before_settings)
+	assert(not game.message.text.contains("Companion updated"))
+	print("GENESIS_SETTINGS_SAVE_TEST_OK: failed companion save preserves state and reports error")
 	game.shutdown()
