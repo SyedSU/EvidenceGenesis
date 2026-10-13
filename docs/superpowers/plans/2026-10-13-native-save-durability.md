@@ -40,3 +40,5 @@ Final review: one important uncertain-rollback recovery message finding; two fai
 
 Ruling: register the abstract static adapter as internal is_exposed0 — exposed/no-method controls abort the4.7.2 editor import, hidden class imports and runtime static calls pass. Cost if wrong: future engine editor introspection may require retesting;4.7.2 is pinned and fail-closed.
 Ruling: physical/device proof and remaining concurrent-writer/new-parent durability gaps stay C — cloud Linux OS calls/process kills cannot close them. Cost if wrong: public release could lose saves; downloads remain blocked.
+
+Windows follow-up:8c47cff job38359839867 failed before C compilation: checkout converted the pinned header to CRLF. Real core.autocrlf=true checkout reproducer RED (digestb4c50e… vs640b48…). Git attributes force headerLF; digest verification retained, regression GREEN. Final suite now24cases23PASS/1Windows-onlyskip; rerun Windows required. No acceptance inferred from failing CI.

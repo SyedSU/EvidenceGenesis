@@ -1,0 +1,2 @@
+# The reviewed ABI header is hashed byte-for-byte on every build.
+native/durability/gdextension_interface.h text eol=lf

@@ -1,5 +1,6 @@
 """Actual OS sync/rename proof, not a physical power-loss simulation."""
 import ctypes
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -9,7 +10,7 @@ import tempfile
 import threading
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from build_save_adapter import build_adapter
+from build_save_adapter import build_adapter, HEADER_SHA
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -40,6 +41,12 @@ class SaveAdapterTests(unittest.TestCase):
         self.active.write_bytes(b'old');self.stage.write_bytes(b'new')
 
     def replace(self):return self.library.genesis_replace_file(os.fsencode(self.stage),os.fsencode(self.active))
+
+    def test_header_pin_survives_windows_line_ending_checkout(self):
+        checkout=self.case/'checkout'
+        subprocess.run(['git','-c','core.autocrlf=true','checkout-index','--prefix='+str(checkout)+'/', '--','native/durability/gdextension_interface.h'],cwd=ROOT,check=True)
+        header=checkout/'native/durability/gdextension_interface.h'
+        self.assertEqual(hashlib.sha256(header.read_bytes()).hexdigest(),HEADER_SHA)
 
     def test_build_paths_preserve_unicode_and_literal_percent(self):
         project=self.case/'ورکشاپ %GENESIS_UNUSED_NAME% 🐾'
