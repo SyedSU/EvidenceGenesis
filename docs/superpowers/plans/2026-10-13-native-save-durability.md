@@ -30,7 +30,7 @@ Interfaces: build_adapter(project:Path)->Path produces architecture/platform-mat
 
 - [x] Integrate build before Godot import, native adapter test/crash harness into Windows builder; preserve genuine bundled-model tests and archive parity.
 - [x] Run state/startup/panel, Python/npm suites; independent read-only review and fix important findings with RED→GREEN proof.
-- [ ] Commit/push source; inspect Windows job steps, capture exact available evidence and record limits. Update canonical state without promoting historical artifacts or physical acceptance.
+- [x] Commit/push source; inspect Windows job steps, capture exact available evidence and record limits. Update canonical state without promoting historical artifacts or physical acceptance.
 
 Ruling: existing owner execution authorization supersedes skill reconfirmation prompts. Small native ABI integration is necessary to satisfy already-required disk sync; it introduces no executable command bridge. Cost if wrong: packaging may fail closed until rebuilt; required Windows/model CI remains a gate.
 
@@ -44,3 +44,9 @@ Ruling: physical/device proof and remaining concurrent-writer/new-parent durabil
 Windows follow-up:8c47cff job38359839867 failed before C compilation: checkout converted the pinned header to CRLF. Real core.autocrlf=true checkout reproducer RED (digestb4c50e… vs640b48…). Git attributes force headerLF; digest verification retained, regression GREEN. Final suite now24cases23PASS/1Windows-onlyskip; rerun Windows required. No acceptance inferred from failing CI.
 
 Windows follow-up:e3bcc31 run38360300792 passed header pin and compiled C DLL with Visual Studio19.51.36260.0, then failed printing a Unicode Godot log through cp1252. Isolated cp1252 child reproducer RED; explicit UTF8 capture/console/child environment GREEN. Final Linux25cases24PASS/1Windows-onlyskip. This diagnostic regression is mocked-output proof, not native Windows acceptance; rerun actual Windows remains required.
+
+Final Windows evidence: source7df30d57f876c29e0704e453d228afc32d737cfa, run38365587053, job115189809600. Native/build/model stepPASS:15 Python cases13PASS/2POSIX-onlyskips,96 save assertions,10 actual PID-bound kills/reloads, C ABI/missing-library/locked-file/reader/Unicode checks, state/startup/settings, exported panel, genuine bundled-model output, component parity/repacking. Overall jobFAIL only artifact quota at upload. Final local27cases26PASS/1Windows-onlyskip; JS6/syntax/startup/panel remain green. No inspected final archive/publisher/target/power-loss promotion.
+
+The initial marker failures were test I/O: unread child PIPEs blocked startup; real100KB noisy-child RED→file-backed captureGREEN plus actual Windows index kills prove the fix. Then a Windows default-codepage save-evidence decode error reproducedRED→strictUTF8GREEN. Original attempts/traces remain evidence; bounded-pause and console-launch hypotheses did not fix marker startup and are not represented as causes. Actual-process PID assertion and child reaping improve proof.
+
+Task2 complete: source pushed, Windows source build/model/fault flow verified with above scope; canonical release ledger records exact outputs/blockers. Keep S24/C for full concurrency/stale writers, new directory ancestry, physical storage/target tests and inspected approved artifacts. Downloads/source locks/trust untouched.
