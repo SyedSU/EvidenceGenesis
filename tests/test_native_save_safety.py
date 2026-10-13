@@ -20,6 +20,12 @@ class NativeSaveSafetyTests(unittest.TestCase):
         if not cls.engine:raise unittest.SkipTest('Godot4.7.2 required for native save tests')
         version=subprocess.check_output([cls.engine,'--version'],text=True).strip()
         if not version.startswith('4.7.2.stable.'):raise unittest.SkipTest('Required Godot4.7.2 unavailable; installed '+version)
+        cls.crash_engine=cls.engine
+        if os.name=='nt' and Path(cls.engine).name.endswith('_console.exe'):
+            actual=Path(cls.engine).with_name(Path(cls.engine).name.removesuffix('_console.exe')+'.exe')
+            if not actual.is_file():raise AssertionError('Verified Godot process executable missing: '+str(actual))
+            cls.crash_engine=str(actual)
+        print('GENESIS_CRASH_PROCESS:',cls.crash_engine)
         cls.workspace=tempfile.TemporaryDirectory(prefix='genesis-save-tests-')
         cls.base=Path(cls.workspace.name);cls.project=cls.base/'native'
         shutil.copytree(ROOT/'native',cls.project,ignore=shutil.ignore_patterns('.godot'))
@@ -67,14 +73,17 @@ class NativeSaveSafetyTests(unittest.TestCase):
             with self.subTest(kind=kind,phase=phase):
                 data=self.base/(kind+'-'+phase);args=['--script','res://tests/save_crash_fixture.gd','--','--phase='+phase]
                 if kind=='index':args.append('--index')
-                process=subprocess.Popen([self.engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
+                process=subprocess.Popen([self.crash_engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
                 marker=data/'EvidenceGenesis/boundary.json'
                 reached=False
                 try:
                     deadline=time.monotonic()+15
                     while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
                     reached=marker.exists()
-                    if reached:self.assertEqual(json.loads(marker.read_text())['phase'],phase)
+                    if reached:
+                        boundary=json.loads(marker.read_text())
+                        self.assertEqual(boundary['phase'],phase)
+                        self.assertEqual(boundary['processId'],process.pid,'Kill target must be the actual Godot process')
                 finally:
                     if process.poll() is None:process.kill()
                     stdout,stderr=process.communicate(timeout=10)

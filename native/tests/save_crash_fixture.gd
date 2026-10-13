@@ -6,7 +6,7 @@ class InterruptedStorage extends GenesisSaveFiles:
 		if phase!=name:return
 		print("CRASH_BOUNDARY:"+name)
 		var marker=FileAccess.open("user://boundary.json",FileAccess.WRITE)
-		marker.store_string(JSON.stringify({"phase":name}));marker.flush();marker.close()
+		marker.store_string(JSON.stringify({"phase":name,"processId":OS.get_process_id()}));marker.flush();marker.close()
 		# Bounded pause; parent must still kill this child at the marker.
 		OS.delay_msec(120000)
 	func store_checked(path: String, bytes: PackedByteArray) -> String:
