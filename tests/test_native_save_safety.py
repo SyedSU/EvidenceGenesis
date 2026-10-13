@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from build_save_adapter import build_adapter
@@ -48,14 +49,27 @@ def pause_and_kill(command,environment,marker,log_path,wait_seconds=15):
             deadline=time.monotonic()+wait_seconds
             while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
             reached=marker.exists()
-            if reached:boundary=json.loads(marker.read_text())
+            if reached:boundary=read_save_json(marker)
             else:dialogs=windows_dialogs(process.pid)
         finally:
             if process.poll() is None:process.kill();killed=True
             process.wait(timeout=10)
     return {'reached':reached,'boundary':boundary,'pid':process.pid,'killed':killed,'output':log_path.read_text(encoding='utf-8',errors='replace'),'dialogs':dialogs}
 
+def read_save_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
 class CrashHarnessTests(unittest.TestCase):
+    def test_save_evidence_reads_utf8_with_legacy_default_encoding(self):
+        with tempfile.TemporaryDirectory(prefix='genesis-save-encoding-') as temp:
+            path=Path(temp)/'save.json';expected={'notes':'ورکشاپ 🐾 ”'}
+            path.write_text(json.dumps(expected,ensure_ascii=False),encoding='utf-8')
+            original_open=Path.open
+            def legacy_open(instance,*args,**kwargs):
+                if kwargs.get('encoding') in (None,'locale'):kwargs['encoding']='cp1252'
+                return original_open(instance,*args,**kwargs)
+            with patch.object(Path,'open',legacy_open):self.assertEqual(read_save_json(path),expected)
+
     def test_child_startup_output_cannot_block_boundary_detection(self):
         with tempfile.TemporaryDirectory(prefix='genesis-noisy-child-') as temp:
             base=Path(temp);marker=base/'marker.json'
@@ -139,7 +153,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
                 saved=data/'EvidenceGenesis/crash.json'
                 candidate=saved if saved.exists() else Path(str(saved)+'.backup')
                 self.assertTrue(candidate.exists(),'No committed save or recovery backup')
-                payload=json.loads(candidate.read_text());self.assertIsInstance(payload,dict)
+                payload=read_save_json(candidate);self.assertIsInstance(payload,dict)
                 read_args=['--script','res://tests/save_crash_fixture.gd','--','--read']+(['--index'] if kind=='index' else [])
                 text=self.run_engine(kind+'-'+phase+'-read',read_args,data)
                 read=json.loads(next(line.removeprefix('CRASH_READ:') for line in text.splitlines() if line.startswith('CRASH_READ:')))
