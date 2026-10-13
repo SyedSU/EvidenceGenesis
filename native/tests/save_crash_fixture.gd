@@ -4,6 +4,7 @@ class InterruptedStorage extends GenesisSaveFiles:
 	var phase=""
 	func boundary(name: String):
 		if phase!=name:return
+		print("CRASH_BOUNDARY:"+name)
 		var marker=FileAccess.open("user://boundary.json",FileAccess.WRITE)
 		marker.store_string(JSON.stringify({"phase":name}));marker.flush();marker.close()
 		while true:OS.delay_msec(20)
@@ -23,6 +24,7 @@ class InterruptedStorage extends GenesisSaveFiles:
 
 func _initialize():
 	var args=OS.get_cmdline_user_args()
+	print("CRASH_INIT:"+JSON.stringify({"args":args,"userDirectory":OS.get_user_data_dir(),"native":ClassDB.class_exists("GenesisDurableFiles")}))
 	var kind="index" if "--index" in args else "state"
 	if "--read" in args:
 		if kind=="index":
@@ -37,7 +39,9 @@ func _initialize():
 		if arg.begins_with("--phase="):adapter.phase=arg.trim_prefix("--phase=")
 	if kind=="index":
 		var profiles=GenesisProfiles.new();profiles.index_path="user://crash.json";profiles.entries=[{"id":"1","name":"Before"}];profiles.selected="1"
-		if not profiles.persist() or not profiles.persist():quit(2);return
+		print("CRASH_BASELINE:index")
+		if not profiles.persist() or not profiles.persist():print("CRASH_BASELINE_FAILED:"+profiles.error);quit(2);return
+		print("CRASH_BASELINE_OK:index")
 		profiles.storage=adapter;profiles.entries[0].name="After";profiles.persist()
 	else:
 		var state=GenesisState.new();state.save_path="user://crash.json"

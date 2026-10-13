@@ -81,7 +81,8 @@ class NativeSaveSafetyTests(unittest.TestCase):
                     if process.stdout:process.stdout.close()
                     if process.stderr:process.stderr.close()
                 actual=list(data.rglob('*')) if data.exists() else []
-                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr)
+                diagnostic=''.join(path.read_text(encoding='utf-8',errors='replace') for path in data.rglob('godot.log')) if data.exists() else ''
+                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr+'; log='+diagnostic)
                 if self.evidence:(self.evidence/(kind+'-'+phase+'-killed.log')).write_text(stdout+stderr)
                 saved=data/'EvidenceGenesis/crash.json'
                 candidate=saved if saved.exists() else Path(str(saved)+'.backup')
