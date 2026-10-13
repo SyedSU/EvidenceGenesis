@@ -69,16 +69,19 @@ class NativeSaveSafetyTests(unittest.TestCase):
                 if kind=='index':args.append('--index')
                 process=subprocess.Popen([self.engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
                 marker=data/'EvidenceGenesis/boundary.json'
+                reached=False
                 try:
                     deadline=time.monotonic()+15
                     while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
-                    self.assertTrue(marker.exists(),'Requested boundary not reached: '+phase)
-                    self.assertEqual(json.loads(marker.read_text())['phase'],phase)
-                    process.kill();stdout,stderr=process.communicate(timeout=5)
+                    reached=marker.exists()
+                    if reached:self.assertEqual(json.loads(marker.read_text())['phase'],phase)
                 finally:
                     if process.poll() is None:process.kill()
+                    stdout,stderr=process.communicate(timeout=10)
                     if process.stdout:process.stdout.close()
                     if process.stderr:process.stderr.close()
+                actual=list(data.rglob('*')) if data.exists() else []
+                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr)
                 if self.evidence:(self.evidence/(kind+'-'+phase+'-killed.log')).write_text(stdout+stderr)
                 saved=data/'EvidenceGenesis/crash.json'
                 candidate=saved if saved.exists() else Path(str(saved)+'.backup')

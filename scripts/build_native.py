@@ -126,7 +126,7 @@ def main():
   run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'],isolated=False)
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/save_adapter_test.gd'],'GENESIS_SAVE_ADAPTER_OK')
   test_env=os.environ.copy();test_env['GENESIS_TEST_GODOT']=str(godot)
-  subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_*save*.py','-v'],cwd=ROOT,env=test_env,check=True,timeout=240)
+  subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_*save*.py','-v','-f'],cwd=ROOT,env=test_env,check=True,timeout=240)
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/state_test.gd'],'GENESIS_STATE_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/startup_test.gd','--','--no-brain'],'GENESIS_STARTUP_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')],isolated=False)
