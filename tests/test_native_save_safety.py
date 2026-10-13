@@ -11,6 +11,33 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from build_save_adapter import build_adapter
 
+def windows_dialogs(pid):
+    if os.name!='nt':return []
+    import ctypes
+    from ctypes import wintypes
+    user=ctypes.WinDLL('user32',use_last_error=True)
+    callback_type=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+    user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+    user.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
+    user.EnumWindows.argtypes=[callback_type,wintypes.LPARAM]
+    user.EnumChildWindows.argtypes=[wintypes.HWND,callback_type,wintypes.LPARAM]
+    found=[]
+    def text(window):
+        value=ctypes.create_unicode_buffer(1024);user.GetWindowTextW(window,value,len(value));return value.value
+    @callback_type
+    def child(window,_unused):
+        value=text(window)
+        if value:found.append(value)
+        return True
+    @callback_type
+    def top(window,_unused):
+        owner=wintypes.DWORD();user.GetWindowThreadProcessId(window,ctypes.byref(owner))
+        if owner.value==pid:
+            found.append(text(window));user.EnumChildWindows(window,child,0)
+        return True
+    user.EnumWindows(top,0)
+    return found
+
 ROOT=Path(__file__).resolve().parents[1]
 
 class NativeSaveSafetyTests(unittest.TestCase):
@@ -75,11 +102,12 @@ class NativeSaveSafetyTests(unittest.TestCase):
                 if kind=='index':args.append('--index')
                 process=subprocess.Popen([self.crash_engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
                 marker=data/'EvidenceGenesis/boundary.json'
-                reached=False
+                reached=False;dialogs=[]
                 try:
                     deadline=time.monotonic()+15
                     while not marker.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.02)
                     reached=marker.exists()
+                    if not reached:dialogs=windows_dialogs(process.pid)
                     if reached:
                         boundary=json.loads(marker.read_text())
                         self.assertEqual(boundary['phase'],phase)
@@ -91,7 +119,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
                     if process.stderr:process.stderr.close()
                 actual=list(data.rglob('*')) if data.exists() else []
                 diagnostic=''.join(path.read_text(encoding='utf-8',errors='replace') for path in data.rglob('godot.log')) if data.exists() else ''
-                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr+'; log='+diagnostic)
+                self.assertTrue(reached,'Requested boundary not reached: '+phase+'; files='+str(actual)+'; child='+stdout+stderr+'; log='+diagnostic+'; dialogs='+str(dialogs))
                 if self.evidence:(self.evidence/(kind+'-'+phase+'-killed.log')).write_text(stdout+stderr)
                 saved=data/'EvidenceGenesis/crash.json'
                 candidate=saved if saved.exists() else Path(str(saved)+'.backup')
