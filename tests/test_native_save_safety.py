@@ -39,7 +39,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
 
     @classmethod
     def run_engine(cls,name,args,data):
-        result=subprocess.run([cls.engine,'--headless','--path',str(cls.project),*args],env=cls.environment(data),capture_output=True,text=True,timeout=60)
+        result=subprocess.run([cls.engine,'--headless','--path',str(cls.project),*args],env=cls.environment(data),capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=60)
         text=result.stdout+result.stderr
         if cls.evidence:(cls.evidence/(name+'.log')).write_text(text)
         if result.returncode or 'SCRIPT ERROR' in text:raise AssertionError(name+' failed:\n'+text)
@@ -56,7 +56,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
         shutil.copytree(self.project,project,ignore=shutil.ignore_patterns('.godot','genesis_save.so','genesis_save.dll'))
         environment=self.environment(self.base/'missing-data')
         for name,args in [('missing-import',['--editor','--import','--quit']),('missing-adapter',['--script','res://tests/save_adapter_test.gd','--','--expect-missing'])]:
-            result=subprocess.run([self.engine,'--headless','--path',str(project),*args],env=environment,capture_output=True,text=True,timeout=60)
+            result=subprocess.run([self.engine,'--headless','--path',str(project),*args],env=environment,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=60)
             output=result.stdout+result.stderr
             if self.evidence:(self.evidence/(name+'.log')).write_text(output)
             self.assertEqual(result.returncode,0,output);self.assertNotIn('SCRIPT ERROR',output)
@@ -67,7 +67,7 @@ class NativeSaveSafetyTests(unittest.TestCase):
             with self.subTest(kind=kind,phase=phase):
                 data=self.base/(kind+'-'+phase);args=['--script','res://tests/save_crash_fixture.gd','--','--phase='+phase]
                 if kind=='index':args.append('--index')
-                process=subprocess.Popen([self.engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+                process=subprocess.Popen([self.engine,'--headless','--path',str(self.project),*args],env=self.environment(data),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8",errors="replace")
                 marker=data/'EvidenceGenesis/boundary.json'
                 try:
                     deadline=time.monotonic()+15

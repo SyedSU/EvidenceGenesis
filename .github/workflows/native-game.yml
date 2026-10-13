@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['main', 'feat/native-game', 'feat/workshop-profiles']
-    paths: ['native/**', 'scripts/**', 'tests/test_component_packages.py', 'tests/test_native_save_safety.py', 'tests/test_save_adapter.py', '.github/workflows/native-game.yml']
+    paths: ['native/**', 'scripts/**', 'tests/test_component_packages.py', 'tests/test_native_save_safety.py', 'tests/test_save_adapter.py', 'tests/test_native_build_output.py', '.github/workflows/native-game.yml']
 concurrency:
   group: native-game-${{ github.ref }}
   cancel-in-progress: true

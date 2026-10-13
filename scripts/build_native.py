@@ -64,14 +64,20 @@ def digest(path):
   for chunk in iter(lambda: stream.read(1024*1024),b''):h.update(chunk)
  return h.hexdigest()
 
+def configure_output():
+ for stream in (sys.stdout,sys.stderr):
+  if hasattr(stream,'reconfigure'):stream.reconfigure(encoding='utf-8')
+ os.environ['PYTHONIOENCODING']='utf-8'
+
 def run_game(executable, args, marker=None, isolated=True):
+ configure_output()
  with tempfile.TemporaryDirectory(prefix='genesis-test-') as temp:
   env=os.environ.copy()
   if isolated:
    env['XDG_DATA_HOME']=temp
    if os.name=='nt':env['APPDATA']=temp
   log=Path(temp)/'game.log'
-  result=subprocess.run([str(executable),'--headless','--log-file',str(log),*args],env=env,text=True,capture_output=True,timeout=240)
+  result=subprocess.run([str(executable),'--headless','--log-file',str(log),*args],env=env,text=True,encoding="utf-8",errors="replace",capture_output=True,timeout=240)
   output=result.stdout+result.stderr+(log.read_text(encoding='utf-8',errors='replace') if log.exists() else '')
   print(output[-4000:])
   if result.returncode or 'SCRIPT ERROR' in output or (marker and marker not in output):
@@ -90,6 +96,7 @@ def package(folder, destination, provenance=None):
  print('Package:',destination,'SHA256:',digest(destination))
 
 def main():
+ configure_output()
  parser=argparse.ArgumentParser();parser.add_argument('--cache',type=Path,default=Path(tempfile.gettempdir())/'EvidenceGenesis-tools'/GODOT);parser.add_argument('--godot',type=Path);parser.add_argument('--model',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--package-only',action='store_true');parser.add_argument('--output',type=Path,default=ROOT/'build/EvidenceGenesis-Windows-v0.5.0.zip')
  args=parser.parse_args();cache=args.cache;folder=ROOT/'build/windows';folder.mkdir(parents=True,exist_ok=True)
  provenance=None
