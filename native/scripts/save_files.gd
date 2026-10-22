@@ -3,9 +3,26 @@ extends RefCounted
 
 # Native persistence is mandatory. No buffered-only/platform rename fallback.
 var uncertain=false
+var last_revision: Dictionary={}
+
+func lease(path: String, acquire: bool) -> bool:
+	return native_available() and ClassDB.class_call_static("GenesisDurableFiles","lock_file" if acquire else "unlock_file",ProjectSettings.globalize_path(path)+".lock")==0
+
+func revision(path: String, limit: int) -> Dictionary:
+	var result={"active":null,"backup":null}
+	for suffix in ["",".backup"]:
+		var name=path+suffix
+		if not FileAccess.file_exists(name):
+			if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(name)):return {}
+			continue
+		var record=read_bytes(name,limit)
+		if not record.ok:return {}
+		var hash=HashingContext.new();hash.start(HashingContext.HASH_SHA256);hash.update(record.bytes)
+		result["active" if suffix.is_empty() else "backup"]=hash.finish().hex_encode()
+	return result
 
 func native_available() -> bool:
-	return ClassDB.class_exists("GenesisDurableFiles")
+	return ClassDB.class_exists("GenesisDurableFiles") and ClassDB.class_has_method("GenesisDurableFiles","lock_file") and ClassDB.class_has_method("GenesisDurableFiles","unlock_file")
 
 func sync_file(path: String) -> Error:
 	if not native_available():return ERR_UNAVAILABLE
@@ -82,6 +99,16 @@ func quarantine(path: String, bytes: PackedByteArray) -> String:
 	cleanup(stage);return ""
 
 func read_json(path: String, validator: Callable, limit: int) -> Dictionary:
+	if not lease(path,true):return {"ok":false,"error":"Save is busy or its transaction lock is unavailable. Close other instances and retry."}
+	var snapshot=revision(path,limit)
+	var result=read_json_locked(path,validator,limit)
+	result["revision"]=snapshot
+	if not lease(path,false):
+		uncertain=true
+		return {"ok":false,"error":"Save transaction could not be released. Reload before saving."}
+	return result
+
+func read_json_locked(path: String, validator: Callable, limit: int) -> Dictionary:
 	var source=path
 	if not FileAccess.file_exists(path):
 		if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(path)):return {"ok":false,"error":"Save path is a directory. Original preserved."}
@@ -103,7 +130,36 @@ func restore_backup(stage: String, backup: String) -> String:
 	# verified stage is now a recovery copy, not disposable operation debris.
 	return " Previous backup retained in recovery file: "+stage
 
-func write_json(path: String, text: String, validator: Callable, limit: int) -> String:
+func write_json(path: String, text: String, validator: Callable, limit: int, expected: Dictionary={"active":null,"backup":null}) -> String:
+	last_revision={}
+	if uncertain:return "Save durability is uncertain. Reload the workshop before saving again; recovery files are preserved."
+	if not native_available():return "Native save support is unavailable. Reinstall the complete game package before saving."
+	if not lease(path,true):return "Save is busy or its transaction lock is unavailable. Close other instances and retry."
+	var snapshot=revision(path,limit)
+	var error=""
+	if snapshot.is_empty():error="Save or backup is unreadable or is a directory. Previous files preserved."
+	elif snapshot!=expected:error="Save changed in another instance. Reload before saving; newer files are preserved."
+	else:
+		error=write_json_locked(path,text,validator,limit)
+		if error.is_empty():
+			last_revision=revision(path,limit)
+			if last_revision.is_empty():uncertain=true;error="Save committed but verification failed. Reload before saving."
+		elif not uncertain:
+			# A failed first replacement may have created a valid backup of the
+			# unchanged primary. Adopt only our verified, non-uncertain outcome;
+			# never acknowledge a revision from the stale-writer rejection above.
+			var retained=revision(path,limit)
+			if not retained.is_empty() and retained.active==snapshot.active:
+				var safe=true
+				for suffix in ["",".backup"]:
+					if FileAccess.file_exists(path+suffix):
+						var record=read_bytes(path+suffix,limit)
+						if not record.ok or not decode(record.bytes,validator).ok:safe=false
+				if safe:last_revision=retained
+	if not lease(path,false):uncertain=true;return "Save transaction could not be released. Reload before saving."
+	return error
+
+func write_json_locked(path: String, text: String, validator: Callable, limit: int) -> String:
 	if uncertain:return "Save durability is uncertain. Reload the workshop before saving again; recovery files are preserved."
 	if not native_available():return "Native save support is unavailable. Reinstall the complete game package before saving."
 	var bytes=text.to_utf8_buffer()

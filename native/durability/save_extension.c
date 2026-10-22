@@ -1,4 +1,4 @@
-/* Godot4.7.2 C ABI bridge. Only two static persistence operations are exposed. */
+/* Godot4.7.2 C ABI bridge. Only static persistence operations are exposed. */
 #include "gdextension_interface.h"
 #include "save_platform.h"
 #include <stdint.h>
@@ -30,15 +30,20 @@ static char *path_string(GDExtensionConstStringPtr value) {
     if (written!=size || strlen(path)!=(size_t)size) {free(path);return NULL;}
     return path;
 }
-static int64_t operate(int count, const char *source, const char *destination) {
-    if (!source || (count==2 && !destination)) return 1;
-    return count==1?genesis_sync_file(source):genesis_replace_file(source,destination);
+static int64_t operate(int operation, const char *source, const char *destination) {
+    if (!source || (operation==2 && !destination)) return 1;
+    if (operation==1) return genesis_sync_file(source);
+    if (operation==2) return genesis_replace_file(source,destination);
+    if (operation==3) return genesis_lock_file(source);
+    if (operation==4) return genesis_unlock_file(source);
+    return 1;
 }
 static void method_call(void *userdata, GDExtensionClassInstancePtr instance,
         const GDExtensionConstVariantPtr *args, GDExtensionInt argc,
         GDExtensionVariantPtr result, GDExtensionCallError *error) {
     (void)instance;
-    int count=(int)(intptr_t)userdata;
+    int operation=(int)(intptr_t)userdata;
+    int count=operation==2?2:1;
     int64_t status=1;
     error->error=GDEXTENSION_CALL_OK;
     if (argc!=count) {
@@ -56,7 +61,7 @@ static void method_call(void *userdata, GDExtensionClassInstancePtr instance,
             paths[i]=path_string(&string);
             string_destroy(&string);
         }
-        if (error->error==GDEXTENSION_CALL_OK) status=operate(count,paths[0],paths[1]);
+        if (error->error==GDEXTENSION_CALL_OK) status=operate(operation,paths[0],paths[1]);
         free(paths[0]);free(paths[1]);
     }
     from_int(result,&status);
@@ -64,16 +69,17 @@ static void method_call(void *userdata, GDExtensionClassInstancePtr instance,
 static void method_ptrcall(void *userdata, GDExtensionClassInstancePtr instance,
         const GDExtensionConstTypePtr *args, GDExtensionTypePtr result) {
     (void)instance;
-    int count=(int)(intptr_t)userdata;
+    int operation=(int)(intptr_t)userdata;
     char *source=path_string(args[0]);
-    char *destination=count==2?path_string(args[1]):NULL;
-    *(int64_t *)result=operate(count,source,destination);
+    char *destination=operation==2?path_string(args[1]):NULL;
+    *(int64_t *)result=operate(operation,source,destination);
     free(source);free(destination);
 }
 static void free_instance(void *userdata, GDExtensionClassInstancePtr instance) {
     (void)userdata;(void)instance; /* Abstract class has no instances. */
 }
-static void add_method(const char *label, int count) {
+static void add_method(const char *label, int operation) {
+    int count=operation==2?2:1;
     void *name=NULL,*empty_name=NULL,*empty_string=NULL,*arg_names[2]={NULL,NULL};
     name_new(&name,label);name_new(&empty_name,"");string_new(&empty_string,"");
     GDExtensionPropertyInfo return_info={0},args[2]={{0},{0}};
@@ -85,7 +91,7 @@ static void add_method(const char *label, int count) {
         args[i]=return_info;args[i].type=GDEXTENSION_VARIANT_TYPE_STRING;args[i].name=&arg_names[i];
     }
     GDExtensionClassMethodInfo method={0};
-    method.name=&name;method.method_userdata=(void *)(intptr_t)count;
+    method.name=&name;method.method_userdata=(void *)(intptr_t)operation;
     method.call_func=method_call;method.ptrcall_func=method_ptrcall;
     method.method_flags=GDEXTENSION_METHOD_FLAG_NORMAL|GDEXTENSION_METHOD_FLAG_STATIC;
     method.has_return_value=1;method.return_value_info=&return_info;
@@ -103,6 +109,7 @@ static void initialize(void *userdata, GDExtensionInitializationLevel level) {
     info.is_abstract=1;info.is_exposed=0;info.free_instance_func=free_instance;
     register_class(library,&class_name,&parent,&info);
     add_method("sync_file",1);add_method("replace_file",2);
+    add_method("lock_file",3);add_method("unlock_file",4);
     name_destroy(&parent);
 }
 static void deinitialize(void *userdata, GDExtensionInitializationLevel level) {

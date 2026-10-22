@@ -123,6 +123,28 @@ class NativeSaveSafetyTests(unittest.TestCase):
         text=self.run_engine('native-state',['--script','res://tests/state_test.gd'],self.base/'state-data')
         self.assertIn('GENESIS_STATE_TEST_OK',text);self.assertIn('0 failed',text)
 
+    def test_stale_workshop_and_profile_writers_preserve_newer_data(self):
+        text=self.run_engine('native-concurrency',['--quit-after','30','--script','res://tests/save_concurrency_test.gd'],self.base/'concurrency-data')
+        self.assertIn('GENESIS_SAVE_CONCURRENCY_OK',text)
+
+    def test_live_transaction_excludes_other_game_process_and_releases_after_kill(self):
+        data=self.base/'live-contention';marker=data/'EvidenceGenesis/boundary.json'
+        command=[self.crash_engine,'--headless','--path',str(self.project),'--script','res://tests/save_crash_fixture.gd','--','--phase=after_stage']
+        with (self.base/'live-contention-child.log').open('wb') as output:
+            child=subprocess.Popen(command,env=self.environment(data),stdout=output,stderr=subprocess.STDOUT)
+            try:
+                deadline=time.monotonic()+15
+                while not marker.exists() and child.poll() is None and time.monotonic()<deadline:time.sleep(.02)
+                self.assertTrue(marker.exists(),'Writer did not reach locked stage')
+                args=['--quit-after','30','--script','res://tests/save_contention_test.gd']
+                text=self.run_engine('live-contention',args,data)
+                self.assertIn('GENESIS_TRANSACTION_BUSY_OK',text)
+            finally:
+                if child.poll() is None:child.kill()
+                child.wait(timeout=10)
+        text=self.run_engine('contention-released',args+['--','--released'],data)
+        self.assertIn('GENESIS_TRANSACTION_RELEASED_OK',text)
+
     def test_native_adapter_abi_and_missing_library(self):
         text=self.run_engine('adapter-abi',['--script','res://tests/save_adapter_test.gd'],self.base/'adapter-data')
         self.assertIn('GENESIS_SAVE_ADAPTER_OK',text)

@@ -51,7 +51,7 @@ def build_adapter(project=ROOT/'native'):
             compiler=shutil.which('cc')
             if not compiler:raise RuntimeError('C compiler required to build the save adapter')
             print('GENESIS_SAVE_COMPILER:',subprocess.check_output([compiler,'--version'],text=True).splitlines()[0])
-            subprocess.run([compiler,'-std=c11','-Wall','-Wextra','-Werror','-O2','-fPIC','-fvisibility=hidden','-shared',*[str(x) for x in files],'-o',str(output)],cwd=temp,check=True)
+            subprocess.run([compiler,'-std=c11','-Wall','-Wextra','-Werror','-O2','-pthread','-fPIC','-fvisibility=hidden','-shared',*[str(x) for x in files],'-o',str(output)],cwd=temp,check=True)
     print('GENESIS_SAVE_ADAPTER_BUILT:',output.name,'SHA256:',hashlib.sha256(output.read_bytes()).hexdigest())
     return output
 

@@ -42,6 +42,47 @@ class SaveAdapterTests(unittest.TestCase):
 
     def replace(self):return self.library.genesis_replace_file(os.fsencode(self.stage),os.fsencode(self.active))
 
+    def transaction_api(self):
+        for name in ('genesis_lock_file','genesis_unlock_file'):
+            function=getattr(self.library,name)
+            function.argtypes=[ctypes.c_char_p];function.restype=ctypes.c_int
+        return self.library.genesis_lock_file,self.library.genesis_unlock_file
+
+    def test_transaction_lock_excludes_other_writers_without_deleting_lock_file(self):
+        acquire,release=self.transaction_api();path=os.fsencode(self.active)+b'.lock'
+        self.assertEqual(acquire(path),0)
+        try:
+            self.assertNotEqual(acquire(path),0)
+            self.assertNotEqual(release(os.fsencode(self.stage)+b'.lock'),0)
+        finally:self.assertEqual(release(path),0)
+        self.assertTrue(Path(os.fsdecode(path)).is_file())
+        self.assertEqual(acquire(path),0);self.assertEqual(release(path),0)
+        self.assertNotEqual(release(path),0)
+
+    def test_process_death_releases_transaction_lock(self):
+        acquire,release=self.transaction_api();path=self.case/'child.lock'
+        code='''import ctypes,sys,time
+library=ctypes.CDLL(sys.argv[1]);lock=library.genesis_lock_file
+lock.argtypes=[ctypes.c_char_p];lock.restype=ctypes.c_int
+status=lock(sys.argv[2].encode('utf-8'));print(status,flush=True)
+if status==0:time.sleep(60)
+'''
+        child=subprocess.Popen([sys.executable,'-c',code,self.library._name,str(path)],stdout=subprocess.PIPE,text=True)
+        try:
+            self.assertEqual(child.stdout.readline().strip(),'0')
+            self.assertNotEqual(acquire(str(path).encode('utf-8')),0)
+        finally:
+            child.kill();child.wait(timeout=10);child.stdout.close()
+        self.assertEqual(acquire(str(path).encode('utf-8')),0)
+        self.assertEqual(release(str(path).encode('utf-8')),0)
+
+    @unittest.skipIf(os.name=='nt','POSIX symlink refusal')
+    def test_transaction_lock_rejects_symlinks_and_directories(self):
+        acquire,_release=self.transaction_api();link=self.case/'lock';link.symlink_to(self.active)
+        self.assertNotEqual(acquire(os.fsencode(link)),0)
+        self.assertNotEqual(acquire(os.fsencode(self.case)),0)
+        self.assertEqual(self.active.read_bytes(),b'old')
+
     def test_header_pin_survives_windows_line_ending_checkout(self):
         checkout=self.case/'checkout'
         subprocess.run(['git','-c','core.autocrlf=true','checkout-index','--prefix='+str(checkout)+'/', '--','native/durability/gdextension_interface.h'],cwd=ROOT,check=True)

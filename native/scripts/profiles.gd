@@ -7,6 +7,8 @@ var selected=""
 var error=""
 var writable=true
 var storage = GenesisSaveFiles.new()
+var disk_revision: Dictionary={"active":null,"backup":null}
+var revision_path=""
 
 func valid_index(value: Variant) -> bool:
 	if not value is Dictionary or value.get("schema")!=4 or not value.get("profiles") is Array or value.profiles.size()>20:return false
@@ -18,6 +20,7 @@ func valid_index(value: Variant) -> bool:
 
 func load_index():
 	var record=storage.read_json(index_path,valid_index,20000)
+	if record.has("revision"):disk_revision=record.revision;revision_path=index_path
 	if record.get("missing",false):return
 	error=record.error
 	if not record.ok:writable=false;return
@@ -25,7 +28,9 @@ func load_index():
 
 func persist() -> bool:
 	if not writable:error="Profile index writes disabled to preserve the original.";return false
-	error=storage.write_json(index_path,JSON.stringify({"schema":4,"selected":selected,"profiles":entries}),valid_index,20000)
+	var expected=disk_revision if revision_path==index_path else {"active":null,"backup":null}
+	error=storage.write_json(index_path,JSON.stringify({"schema":4,"selected":selected,"profiles":entries}),valid_index,20000,expected)
+	if not storage.last_revision.is_empty():disk_revision=storage.last_revision.duplicate();revision_path=index_path
 	return error.is_empty()
 
 func create(name: String, legacy=false, restored: Dictionary={}) -> GenesisState:

@@ -7,6 +7,8 @@ var save_enabled = true
 const SAVE = "user://workshop.json"
 var save_path = SAVE
 var storage = GenesisSaveFiles.new()
+var disk_revision: Dictionary={"active":null,"backup":null}
+var revision_path=""
 
 func _init():
 	data = fresh()
@@ -112,11 +114,14 @@ func harvest() -> String:
 
 func save() -> bool:
 	if not save_enabled:last_error="Save disabled to preserve the original. Restore a known backup from Settings.";return false
-	last_error=storage.write_json(save_path,JSON.stringify(data,"\t"),valid,1500000)
+	var expected=disk_revision if revision_path==save_path else {"active":null,"backup":null}
+	last_error=storage.write_json(save_path,JSON.stringify(data,"\t"),valid,1500000,expected)
+	if not storage.last_revision.is_empty():disk_revision=storage.last_revision.duplicate();revision_path=save_path
 	return last_error.is_empty()
 
 func load_save():
 	var record=storage.read_json(save_path,valid,1500000)
+	if record.has("revision"):disk_revision=record.revision;revision_path=save_path
 	if record.get("missing",false):return
 	last_error=record.error
 	if record.ok:adopt(record.data)
