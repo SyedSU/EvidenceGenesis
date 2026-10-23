@@ -1,0 +1,27 @@
+name: Inspect downloaded private Windows build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/inspect_review_build.py', 'tests/test_review_inspection.py', 'review/inspection-lock.json', '.github/workflows/inspect-review.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test independent package guards
+        run: python -m unittest discover -s tests -p test_review_inspection.py
+      - name: Download pinned private assets, inspect and run isolated Windows acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/inspect_review_build.py

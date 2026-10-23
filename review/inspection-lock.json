@@ -1,0 +1,50 @@
+{
+  "product": "genesis",
+  "repository": "SyedSU/EvidenceGenesis",
+  "sourceCommit": "a7b05c58be82c794302d3f4eb9c9e5221efcb455",
+  "runId": 39888761585,
+  "jobId": 120203151454,
+  "result": "PASS",
+  "release": {
+    "id": 421386682,
+    "url": "https://github.com/SyedSU/EvidenceGenesis/releases/tag/untagged-00f34a49e1704f991789",
+    "tag": "review-genesis-a7b05c58be82c794302d3f4eb9c9e5221efcb455-39888761585-1",
+    "draft": true,
+    "prerelease": true
+  },
+  "assets": [
+    {
+      "name": "EvidenceGenesis-Windows-v0.5.0.zip",
+      "size": 535744604,
+      "sha256": "sha256:8c9867964df7eeb5e57911c783bdb77cf253947073a4e72b7fafb19b2c3a1a83"
+    },
+    {
+      "name": "genesis-candidate-report.json",
+      "size": 28325,
+      "sha256": "sha256:a398cd188272ccec5a9cc47b15a8b0d4271e60de17fdcc1c29f85bbc9251b633"
+    },
+    {
+      "name": "genesis-game-v0.5.0-a7b05c58be82-windows-x64.zip",
+      "size": 38246827,
+      "sha256": "sha256:e64d1c98f0cdf35a5f62fe340500fff473266e1f7f55c1667bc13d80059ffcc6"
+    },
+    {
+      "name": "genesis-model-Qwen2.5-0.5B-Instruct-Q4_K_M-9217f5db79a2.zip",
+      "size": 477541569,
+      "sha256": "sha256:ddc7198be3f3e6270e7ec084f600b41dd9a3273c20f1571d813fcf98700df2d3"
+    },
+    {
+      "name": "genesis-runtime-b11429-d81235049384-windows-x64.zip",
+      "size": 19951688,
+      "sha256": "sha256:00e7e524604dbb2b6373c407c65ba41c6973dd83e5ea1feba89cd632da17c502"
+    },
+    {
+      "name": "review-build.json",
+      "size": 1644,
+      "sha256": "sha256:09eaaa7d8105a75d709b8908931b4904b02b08049446b921cfda29db85a01bfa"
+    }
+  ],
+  "serverSizeSha256Verified": true,
+  "independentPackageInspection": "UNRUN",
+  "productionPublicationAuthorized": false
+}
