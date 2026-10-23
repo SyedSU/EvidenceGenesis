@@ -1,0 +1,13 @@
+2026-10-23T01:55:48.7084859Z Ran 6 tests in 0.140s
+2026-10-23T01:56:08.8494715Z test_actual_unicode_path_update_and_readback (test_windows_version.WindowsVersionTests.test_actual_unicode_path_update_and_readback) ... ok
+2026-10-23T01:56:08.8502730Z test_rejects_ambiguous_or_out_of_range_versions (test_windows_version.WindowsVersionTests.test_rejects_ambiguous_or_out_of_range_versions) ... ok
+2026-10-23T01:56:08.8508941Z test_resource_contains_fixed_and_string_product_identity (test_windows_version.WindowsVersionTests.test_resource_contains_fixed_and_string_product_identity) ... ok
+2026-10-23T01:56:08.8510521Z Ran 3 tests in 0.054s
+2026-10-23T01:57:12.4912245Z Ran 20 tests in 27.366s
+2026-10-23T01:57:25.8746477Z GENESIS_PE_VERSION_VERIFIED: 0.5.0.0
+2026-10-23T01:57:26.8897575Z GENESIS_NATIVE_SMOKE_OK
+2026-10-23T01:57:26.8898435Z GENESIS_NATIVE_SMOKE_OK
+2026-10-23T01:58:47.6307396Z GENESIS_AI_SMOKE_OK: I understand you've provided the document "Garden routine" from the source notes. The format preference is to use three numbered steps. Here's the document in plain text:
+2026-10-23T01:58:47.6312783Z GENESIS_AI_SMOKE_OK: I understand you've provided the document "Garden routine" from the source notes. The format preference is to use three numbered steps. Here's the document in plain text:
+2026-10-23T01:58:47.6316161Z Package: D:\a\EvidenceGenesis\EvidenceGenesis\build\EvidenceGenesis-Windows-v0.5.0.zip SHA256: ac1b09147773599c987475f96fe681972073c75de89c30ae20009a01c7f05eb5
+2026-10-23T01:58:49.5175564Z ##[error]Failed to CreateArtifact: Artifact storage quota has been hit. Unable to upload any new artifacts. Usage is recalculated every 6-12 hours.

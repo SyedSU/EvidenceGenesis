@@ -1,0 +1,41 @@
+{
+  "sourceCommit": "6e2b72a8320f3f6f0da71faf9a6b0f717ff5924f",
+  "scope": "Windows executable version before packaging; no signing or public acceptance",
+  "localTests": {
+    "python": {
+      "cases": 43,
+      "passed": 41,
+      "windowsOnlySkipped": 2
+    },
+    "javascript": {
+      "passed": 6,
+      "syntax": "PASS"
+    }
+  },
+  "sha256": {
+    "scripts/windows_version.py": "2efeac25275e3bedbd97b718a5ed11452c891646d630a18604f7bcf73a76a479",
+    "scripts/build_native.py": "0b6f5ae69302be34a09dbfc612e19f25418b3976612784a315fa13dddaf8abe8",
+    "native/export_presets.cfg": "38266570d886821fc433214e434dc8473019364cf06c050385f49fb4e49b49c1",
+    "tests/test_windows_version.py": "98c3bd807251c015e59dddd8f4a3c3f7581b1386efda4e09d5110690f678221b"
+  },
+  "windows": {
+    "runId": 39886641180,
+    "jobId": 120196238718,
+    "sourceCommit": "6e2b72a8320f3f6f0da71faf9a6b0f717ff5924f",
+    "versionResourceTests": {
+      "passed": 3,
+      "unicodePath": true,
+      "nestedStringQueries": true
+    },
+    "exportedFixedFileProductVersion": "0.5.0.0",
+    "saveTests": {
+      "passed": 20
+    },
+    "packagedNativeSmoke": "PASS",
+    "actualBundledModelGeneration": "PASS",
+    "buildStep": "PASS",
+    "artifactUpload": "FAIL: GitHub storage quota",
+    "independentPackageInspection": "UNRUN: archive unavailable",
+    "publicationAuthorized": false
+  }
+}
