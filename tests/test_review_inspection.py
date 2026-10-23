@@ -21,7 +21,8 @@ class ReviewInspectionTests(unittest.TestCase):
    self.assertEqual(module.zip_inventory(path),[{'path':'folder/file.txt','size':11,'sha256':hashlib.sha256(b'exact bytes').hexdigest()}])
    for name in ['../bad','/root','a\\bad','C:/bad','a//bad','x/CON.txt','x/file:stream','x/file.','x/./file','x/COM¹.txt','LPT²' ]:
     with self.subTest(name=name):
-     with zipfile.ZipFile(path,'w') as archive:archive.writestr(name,b'x')
+     with zipfile.ZipFile(path,'w') as archive:
+      info=zipfile.ZipInfo('placeholder');info.filename=name;archive.writestr(info,b'x')
      with self.assertRaises(ValueError):module.zip_inventory(path)
  def test_zip_rejects_case_collisions_and_symlinks(self):
   module=self.module()
@@ -33,6 +34,26 @@ class ReviewInspectionTests(unittest.TestCase):
    with zipfile.ZipFile(path,'w') as archive:
     info=zipfile.ZipInfo('link');info.create_system=3;info.external_attr=0o120777<<16;archive.writestr(info,b'target')
    with self.assertRaises(ValueError):module.zip_inventory(path)
+ def test_zip_rejects_original_name_before_windows_normalization(self):
+  module=self.module()
+  from unittest.mock import patch
+  class Entry:
+   filename='a/bad'
+   orig_filename='a\\bad'
+   external_attr=0
+   flag_bits=0
+   compress_type=0
+   file_size=1
+   def is_dir(self):return False
+  class Archive:
+   def __enter__(self):return self
+   def __exit__(self,*args):pass
+   def infolist(self):return [Entry()]
+   def open(self,info):
+    import io
+    return io.BytesIO(b'x')
+  with patch.object(module.zipfile,'ZipFile',return_value=Archive()):
+   with self.assertRaises(ValueError):module.zip_inventory('unused')
  def test_zip_rejects_windows_reparse_attribute(self):
   module=self.module()
   with tempfile.TemporaryDirectory() as tmp:

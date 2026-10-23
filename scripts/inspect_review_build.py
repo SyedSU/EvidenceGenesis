@@ -25,7 +25,9 @@ def zip_inventory(path):
  with zipfile.ZipFile(path) as archive:
   if not 0<len(archive.infolist())<=2000:raise ValueError('Archive member count exceeds bound')
   for info in archive.infolist():
-   name=safe_name(info.filename);key=name.casefold();mode=stat.S_IFMT(info.external_attr>>16)
+   name=safe_name(info.orig_filename)
+   if name!=info.filename:raise ValueError('Archive path normalization is refused')
+   key=name.casefold();mode=stat.S_IFMT(info.external_attr>>16)
    if key in seen or info.external_attr&0x400 or info.is_dir() or mode not in (0,stat.S_IFREG) or info.flag_bits&1 or info.compress_type not in (0,8) or info.file_size>1024**3:
     raise ValueError('Unsafe or duplicate archive entry')
    seen.add(key);total+=info.file_size
