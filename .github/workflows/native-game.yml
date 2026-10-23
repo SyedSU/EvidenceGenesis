@@ -11,6 +11,7 @@ permissions:
   contents: read
 jobs:
   build:
+    if: github.ref != 'refs/heads/main'
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
@@ -35,3 +36,27 @@ jobs:
           path: build/components/*
           retention-days: 3
           if-no-files-found: error
+
+  review-build:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify deterministic component packaging
+        run: python -m unittest discover -s tests -p test_component_packages.py
+      - name: Build and test the Windows game and bundled AI
+        run: python scripts/build_native.py
+      - name: Test review storage guards
+        run: python -m unittest discover -s tests -p test_review_storage.py
+      - name: Store private review draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/store_review_build.py
