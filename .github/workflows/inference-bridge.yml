@@ -20,7 +20,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install only hash-pinned reviewed build tools
-        run: python -m pip install --require-hashes --only-binary=:all: -r scripts/inference-build-requirements.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r scripts/inference-build-requirements.txt
       - name: Fetch the exact reviewed runtime source
         run: |
           git init "$RUNNER_TEMP/llama-source"
