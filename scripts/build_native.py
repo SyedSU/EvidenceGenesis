@@ -1,6 +1,7 @@
 """Build the self-contained Windows game; requires Python and an x64 C compiler on the build machine."""
 import argparse, hashlib, json, os, re, shutil, subprocess, sys, tempfile, urllib.request, zipfile
 from build_save_adapter import build_adapter
+from windows_version import write_version, read_version, version_tuple
 from component_packages import VERSION, emit_candidates, deterministic_zip, verify_full_package_parity
 from pathlib import Path
 
@@ -39,7 +40,7 @@ def provenance_sources():
  if tag.get('type')!='commit' or tag.get('sha')!=LLAMA_COMMIT:raise RuntimeError('Runtime tag no longer matches reviewed source commit')
  gguf=revision('Qwen/Qwen2.5-0.5B-Instruct-GGUF');model_license=revision('Qwen/Qwen2.5-0.5B-Instruct')
  immutable_model=MODEL_URL.replace('/resolve/main/','/resolve/'+gguf+'/')
- return {'gameSourceCommit':game_commit,'game':{'version':VERSION,'sourceCommit':game_commit,'peVersionVerified':False,'resourcePresetVersion':'0.3.0.0','resourceModificationEnabled':False},'godot':{'version':GODOT,'sourceCommit':GODOT_COMMIT},'runtime':{'version':LLAMA,'sourceCommit':LLAMA_COMMIT,'archiveUrl':f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip','archiveSha256':RUNTIME_SHA},'model':{'version':'Qwen2.5-0.5B-Instruct-Q4_K_M','sourceCommit':gguf,'repository':'Qwen/Qwen2.5-0.5B-Instruct-GGUF','sourceUrl':immutable_model,'sha256':MODEL_SHA,'licenseRepositoryCommit':model_license},'licenses':[]}
+ return {'gameSourceCommit':game_commit,'game':{'version':VERSION,'sourceCommit':game_commit,'peVersionVerified':False,'resourcePresetVersion':'.'.join(map(str,version_tuple(VERSION))),'resourceModificationEnabled':False,'godotResourceModificationEnabled':False},'godot':{'version':GODOT,'sourceCommit':GODOT_COMMIT},'runtime':{'version':LLAMA,'sourceCommit':LLAMA_COMMIT,'archiveUrl':f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip','archiveSha256':RUNTIME_SHA},'model':{'version':'Qwen2.5-0.5B-Instruct-Q4_K_M','sourceCommit':gguf,'repository':'Qwen/Qwen2.5-0.5B-Instruct-GGUF','sourceUrl':immutable_model,'sha256':MODEL_SHA,'licenseRepositoryCommit':model_license},'licenses':[]}
 
 def download(url, path):
  path.parent.mkdir(parents=True, exist_ok=True)
@@ -121,6 +122,11 @@ def main():
   target=base/'export_templates/4.7.2.stable';target.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(templates) as z:
    for name in ['windows_release_x86_64.exe','windows_debug_x86_64.exe','version.txt']:(target/name).write_bytes(z.read('templates/'+name))
+  if os.name=='nt':
+   subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_windows_version.py','-v'],cwd=ROOT,check=True,timeout=60)
+   # Patch only our checksum-verified extracted template before Godot embeds PCK.
+   # Updating resources on the final embedded EXE can damage pack offsets/overlay.
+   write_version(target/'windows_release_x86_64.exe',VERSION)
   adapter=build_adapter(ROOT/'native')
   provenance['saveAdapter']={'kind':'first-party Godot C ABI','platform':os.name,'library':adapter.name,'sha256':digest(adapter),'godotSourceCommit':GODOT_COMMIT,'compilerPinVerified':False}
   run_game(godot,['--path',str(ROOT/'native'),'--editor','--import','--quit'],isolated=False)
@@ -130,7 +136,11 @@ def main():
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/state_test.gd'],'GENESIS_STATE_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--script','res://tests/startup_test.gd','--','--no-brain'],'GENESIS_STARTUP_TEST_OK')
   run_game(godot,['--path',str(ROOT/'native'),'--export-release','Windows Desktop',str(folder/'EvidenceGenesis.exe')],isolated=False)
-  if os.name=='nt' and not (folder/'genesis_save.dll').is_file():raise RuntimeError('Export omitted the required native save adapter')
+  if os.name=='nt':
+   if not (folder/'genesis_save.dll').is_file():raise RuntimeError('Export omitted the required native save adapter')
+   if read_version(folder/'EvidenceGenesis.exe')!=version_tuple(VERSION):raise RuntimeError('Exported Windows version differs from package identity')
+   provenance['game'].update({'peVersionVerified':True,'resourceModificationEnabled':True,'resourceVersionMethod':'Win32 UpdateResource on verified template before Godot pack embedding'})
+   print('GENESIS_PE_VERSION_VERIFIED:', '.'.join(map(str,version_tuple(VERSION))))
   runtime=args.runtime or download(f'https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA}/llama-{LLAMA}-bin-win-cpu-x64.zip',cache/'llama-win.zip')
   if digest(runtime)!=RUNTIME_SHA:raise RuntimeError('Runtime checksum mismatch')
   with zipfile.ZipFile(runtime) as z:z.extractall(folder/'brain')
