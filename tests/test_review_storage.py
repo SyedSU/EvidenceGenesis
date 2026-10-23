@@ -46,4 +46,14 @@ class ReviewStorageTests(unittest.TestCase):
   for changes in [{'draft':False},{'prerelease':False},{'target_commitish':'main'},{'assets':[]},{'assets':[{'name':'file.zip','size':3,'digest':None}]}]:
    with self.subTest(changes=changes),self.assertRaises(ValueError):module.verify_release(dict(release,**changes),files,'b'*40)
 
+ def test_api_errors_keep_safe_server_diagnostics(self):
+  module=self.module()
+  from unittest.mock import patch
+  import subprocess
+  failure=subprocess.CalledProcessError(1,['gh','api','repos/allowed'],stderr='HTTP 403: limited; token=fixture-secret')
+  with patch.object(module.subprocess,'run',side_effect=failure),patch.dict(module.os.environ,{'GH_TOKEN':'fixture-secret'}):
+   with self.assertRaises(RuntimeError) as caught:module.api('repos/allowed')
+  self.assertIn('HTTP 403',str(caught.exception))
+  self.assertNotIn('fixture-secret',str(caught.exception))
+
 if __name__=='__main__':unittest.main()

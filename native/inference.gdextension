@@ -1,0 +1,17 @@
+[configuration]
+entry_symbol = "genesis_ai_init"
+compatibility_minimum = "4.7.2"
+reloadable = false
+
+[libraries]
+linux.x86_64 = "res://genesis_ai.so"
+android.arm64 = "res://android_inference/libgenesis_ai.so"
+
+[dependencies]
+android.arm64 = {
+"res://android_inference/libllama.so": "",
+"res://android_inference/libggml.so": "",
+"res://android_inference/libggml-base.so": "",
+"res://android_inference/libggml-cpu.so": "",
+"res://android_inference/libc++_shared.so": ""
+}

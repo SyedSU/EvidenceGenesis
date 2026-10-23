@@ -15,6 +15,10 @@ var request: HTTPRequest
 var attempts=0
 var enabled=true
 var needs_runtime=false
+var native_transport=false
+var native_request_id=0
+var native_canceling=false
+var native_loading=false
 const SUPPORT_URL="https://aka.ms/vc14/vc_redist.x64.exe"
 
 func _ready():
@@ -24,8 +28,21 @@ func _ready():
 	request.request_completed.connect(_completed)
 
 func start():
+	if native_loading or available:return
 	if "--no-brain" in OS.get_cmdline_user_args():
 		status="Template mode · local AI disabled for this test";status_changed.emit(status);return
+	if OS.get_name()=="Android":
+		native_transport=true
+		if not ClassDB.class_exists("GenesisLocalInference"):
+			status="Local AI support is missing. Template mode remains available.";status_changed.emit(status);return
+		# Android accepts only the separately provisioned app-private model.
+		var model=ProjectSettings.globalize_path("user://models/genesis.gguf")
+		if not FileAccess.file_exists(model):
+			status="Local AI model is missing from private storage. Template mode remains available.";status_changed.emit(status);return
+		var response=_native_call("load",model)
+		native_loading=response.get("state")=="loading"
+		status="Verifying and loading the local AI…" if native_loading else response.get("error","Local AI could not load.")
+		status_changed.emit(status);return
 	var base=OS.get_executable_path().get_base_dir()
 	var executable=base.path_join("brain/llama-server.exe" if OS.get_name()=="Windows" else "brain/llama-server")
 	var model=base.path_join("model/genesis.gguf")
@@ -73,10 +90,17 @@ func generate(actor: Dictionary, title: String, notes: String, chat=false):
 	if not chat:system+=" Prepare a document from the source notes. Keep their meaning and follow relevant formatting preferences. If the role is Reviewer, review the notes and identify gaps without inventing missing information."
 	var prompt={"name":actor.name,"role":actor.role,"lessons":lessons,"title":title,"source_notes":notes}
 	var payload={"model":model_name,"messages":[{"role":"system","content":system},{"role":"user","content":JSON.stringify(prompt)}],"max_tokens":700,"temperature":0.3,"stream":false}
+	if native_transport:
+		native_request_id+=1
+		var response=_native_call("generate",system,JSON.stringify(prompt),str(native_request_id))
+		if response.get("state")!="generating":
+			busy=false;finished.emit("",response.get("error","Local AI could not start."))
+		return
 	var err=request.request("http://127.0.0.1:"+str(port)+"/v1/chat/completions",["Content-Type: application/json","Authorization: Bearer "+key],HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if err!=OK:busy=false;finished.emit("","Could not contact the local AI. Your notes are preserved.")
 
 func _completed(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray):
+	if not busy:return
 	busy=false
 	if result!=HTTPRequest.RESULT_SUCCESS or code!=200:
 		finished.emit("","The local AI could not finish this task. Keep the notes shorter or try again.");return
@@ -89,5 +113,53 @@ func _completed(result: int, code: int, _headers: PackedStringArray, body: Packe
 		finished.emit("","The local AI returned an empty or oversized result.");return
 	finished.emit(content.strip_edges(),"")
 
+func _native_call(operation: String, first="", second="", third="") -> Dictionary:
+	if not ClassDB.class_exists("GenesisLocalInference"):return {"state":"error","error":"Local AI support missing."}
+	var raw=ClassDB.class_call_static("GenesisLocalInference","request",operation,first,second,third)
+	var data=JSON.parse_string(raw)
+	if not data is Dictionary:return {"state":"error","error":"Invalid native AI response."}
+	return data
+
+func _process(_delta):
+	if not native_transport or not (native_loading or busy or native_canceling):return
+	var response=_native_call("poll")
+	var state=response.get("state","")
+	if native_canceling:
+		if state in ["canceled","ready","idle","error"]:
+			native_canceling=false;busy=false
+			if native_loading:
+				native_loading=false;available=false;status="Local AI loading canceled. Restart the game to retry.";status_changed.emit(status)
+		return
+	if native_loading:
+		if state=="ready":
+			native_loading=false;available=true;status="Local AI ready · Qwen 0.5B · offline";status_changed.emit(status)
+		elif state in ["error","canceled"]:
+			native_loading=false;available=false;status=response.get("error","Local AI could not load.");status_changed.emit(status)
+		return
+	if state in ["completed","error","canceled"]:
+		busy=false
+		if response.get("request_id","")!=str(native_request_id):return
+		var content=response.get("content","")
+		if state!="completed":finished.emit("",response.get("error","Local AI could not finish."));return
+		if not content is String or content.strip_edges().is_empty() or content.length()>20000:
+			finished.emit("","Local AI returned an empty or oversized result.");return
+		if response.get("truncated",false):content+="\n\n[Local AI stopped at its output limit; review before approving.]"
+		finished.emit(content.strip_edges(),"")
+
+func cancel():
+	if native_transport:
+		if busy or native_loading:
+			native_request_id+=1;native_canceling=true;_native_call("cancel")
+	else:
+		if request!=null:request.cancel_request()
+		busy=false
+
+func _notification(what):
+	if what==NOTIFICATION_APPLICATION_PAUSED:
+		var had_task=busy
+		cancel()
+		if had_task:finished.emit("","Local AI canceled while the app entered the background. Your notes are preserved.")
+
 func _exit_tree():
+	if native_transport:_native_call("shutdown")
 	if pid>0 and OS.is_process_running(pid):OS.kill(pid)

@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "platform": "android-arm64",
+  "runtimeSource": "/workspace/work/toolchains/llama-source",
+  "runtimeCommit": "d81235049384534c167caea52b85a694f6103d14",
+  "ndk": "28.2.13676358",
+  "files": [
+    {
+      "path": "libgenesis_ai.so",
+      "size": 554984,
+      "sha256": "83213cd85b4bd2da2ccbb0949ecd264ba8327a7e40c584271c9ca480a7af0574",
+      "soname": "libgenesis_ai.so",
+      "needed": [
+        "libc++_shared.so",
+        "libc.so",
+        "libdl.so",
+        "libggml-base.so",
+        "libggml-cpu.so",
+        "libggml.so",
+        "libllama.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    },
+    {
+      "path": "libllama.so",
+      "size": 38226984,
+      "sha256": "27f194e536136ed4343a504eee5398ad6caf31d085ae4811a1f0c9d23f086fa1",
+      "soname": "libllama.so",
+      "needed": [
+        "libc++_shared.so",
+        "libc.so",
+        "libdl.so",
+        "libggml-base.so",
+        "libggml-cpu.so",
+        "libggml.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    },
+    {
+      "path": "libggml.so",
+      "size": 529808,
+      "sha256": "5e7a0828d930f8152d56810547e38bb8bd78141d06bacec09e71dd282db09b30",
+      "soname": "libggml.so",
+      "needed": [
+        "libc++_shared.so",
+        "libc.so",
+        "libdl.so",
+        "libggml-base.so",
+        "libggml-cpu.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    },
+    {
+      "path": "libggml-base.so",
+      "size": 6079080,
+      "sha256": "b97980aa5857245e76887ab40680d36bb04b86f967ac177ac99975c5a8999d94",
+      "soname": "libggml-base.so",
+      "needed": [
+        "libc++_shared.so",
+        "libc.so",
+        "libdl.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    },
+    {
+      "path": "libggml-cpu.so",
+      "size": 4539704,
+      "sha256": "887214a500c1148957d27ff4109c64d840004d283d1e6f0367e57cadb9d8371d",
+      "soname": "libggml-cpu.so",
+      "needed": [
+        "libc++_shared.so",
+        "libc.so",
+        "libdl.so",
+        "libggml-base.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    },
+    {
+      "path": "libc++_shared.so",
+      "size": 9236352,
+      "sha256": "ab4e6c71b96b851de45a8a9bd86369e7dbc2130a44b3b4520564be94847910f2",
+      "soname": "libc++_shared.so",
+      "needed": [
+        "libc.so",
+        "libdl.so",
+        "libm.so"
+      ],
+      "minimumLoadAlignment": 16384
+    }
+  ],
+  "deviceAcceptance": "unrun",
+  "localInferenceVerified": false,
+  "publicationAuthorized": false,
+  "options": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_MAKE_PROGRAM": "/workspace/work/toolchains/ninja/ninja-1.11.1.4.data/scripts/ninja",
+    "GENESIS_LLAMA_SOURCE": "/workspace/work/toolchains/llama-source",
+    "FETCHCONTENT_FULLY_DISCONNECTED": "ON",
+    "CMAKE_TOOLCHAIN_FILE": "/workspace/work/toolchains/android-ndk-r28c/build/cmake/android.toolchain.cmake",
+    "ANDROID_ABI": "arm64-v8a",
+    "ANDROID_PLATFORM": "android-26",
+    "ANDROID_STL": "c++_shared",
+    "ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES": "ON"
+  }
+}

@@ -1,0 +1,35 @@
+name: Real native inference bridge proof
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['native/inference/**', 'native/inference.gdextension', 'native/scripts/brain.gd', 'native/tests/inference_test.gd', 'scripts/build_inference_bridge.py', 'scripts/verify_actual_inference.py', 'scripts/inference-build-requirements.txt', 'tests/test_inference_bridge.py', '.github/workflows/inference-bridge.yml']
+permissions:
+  contents: read
+jobs:
+  actual-model:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only hash-pinned reviewed build tools
+        run: python -m pip install --require-hashes --only-binary=:all: -r scripts/inference-build-requirements.txt
+      - name: Fetch the exact reviewed runtime source
+        run: |
+          git init "$RUNNER_TEMP/llama-source"
+          git -C "$RUNNER_TEMP/llama-source" remote add origin https://github.com/ggml-org/llama.cpp.git
+          git -C "$RUNNER_TEMP/llama-source" fetch --depth=1 origin d81235049384534c167caea52b85a694f6103d14
+          git -C "$RUNNER_TEMP/llama-source" checkout --detach FETCH_HEAD
+      - name: Build CPU bridge from clean pinned source
+        run: python scripts/build_inference_bridge.py --source "$RUNNER_TEMP/llama-source" --output "$RUNNER_TEMP/bridge" --cmake "$(command -v cmake)" --ninja "$(command -v ninja)"
+      - name: Verify actual pinned model generation, cancellation, reuse and Godot bridge
+        env:
+          GENESIS_AI_LIBRARY: ${{ runner.temp }}/bridge/libgenesis_ai.so
+        run: python scripts/verify_actual_inference.py

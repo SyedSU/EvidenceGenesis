@@ -18,3 +18,5 @@ native/.godot/
 *.obj
 *.lib
 *.exp
+
+native/android_inference/

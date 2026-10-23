@@ -1,0 +1,10 @@
+test_cancel_load_is_observable_and_shutdown_is_idempotent (test_inference_bridge.InferenceBridgeTests.test_cancel_load_is_observable_and_shutdown_is_idempotent) ... ok
+test_model_requires_absolute_path_and_pinned_hash (test_inference_bridge.InferenceBridgeTests.test_model_requires_absolute_path_and_pinned_hash) ... ok
+test_oversized_and_invalid_utf8_inputs_are_rejected (test_inference_bridge.InferenceBridgeTests.test_oversized_and_invalid_utf8_inputs_are_rejected) ... ok
+test_real_model_generation_cancellation_and_reuse (test_inference_bridge.InferenceBridgeTests.test_real_model_generation_cancellation_and_reuse) ... skipped 'Actual pinned GGUF required'
+test_unloaded_generate_fails_and_unknown_operation_is_rejected (test_inference_bridge.InferenceBridgeTests.test_unloaded_generate_fails_and_unknown_operation_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.026s
+
+OK (skipped=1)

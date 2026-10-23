@@ -55,7 +55,14 @@ def verify_release(release,files,sha):
 def api(endpoint,payload=None):
  args=['gh','api',endpoint]
  if payload is not None:args+=['--method','POST','--input','-']
- result=subprocess.run(args,input=json.dumps(payload) if payload is not None else None,text=True,encoding='utf-8',capture_output=True,check=True)
+ try:
+  result=subprocess.run(args,input=json.dumps(payload) if payload is not None else None,text=True,encoding='utf-8',capture_output=True,check=True)
+ except subprocess.CalledProcessError as error:
+  diagnostic=error.stderr or 'No server diagnostic returned'
+  for key in ('GH_TOKEN','GITHUB_TOKEN'):
+   token=os.environ.get(key,'')
+   if token:diagnostic=diagnostic.replace(token,'[redacted]')
+  raise RuntimeError('GitHub API failed: '+json.dumps(diagnostic[:2000],ensure_ascii=True)) from None
  return json.loads(result.stdout)
 
 

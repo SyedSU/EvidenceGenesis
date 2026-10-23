@@ -1,0 +1,12 @@
+.................s......................................ss..
+----------------------------------------------------------------------
+Ran 60 tests in 14.493s
+
+OK (skipped=3)
+GENESIS_CRASH_PROCESS: /workspace/work/save-safety/engine/Godot_v4.7.2-stable_linux.x86_64
+GENESIS_SAVE_COMPILER: cc (Debian 14.2.0-19) 14.2.0
+GENESIS_SAVE_ADAPTER_BUILT: genesis_save.so SHA256: 250c7d6d1dc8322b90036be40551c3dccf456393fcf0c5e348d356005ab6dd50
+GENESIS_SAVE_COMPILER: cc (Debian 14.2.0-19) 14.2.0
+GENESIS_SAVE_ADAPTER_BUILT: genesis_save.so SHA256: 250c7d6d1dc8322b90036be40551c3dccf456393fcf0c5e348d356005ab6dd50
+GENESIS_SAVE_COMPILER: cc (Debian 14.2.0-19) 14.2.0
+GENESIS_SAVE_ADAPTER_BUILT: genesis_save.so SHA256: 250c7d6d1dc8322b90036be40551c3dccf456393fcf0c5e348d356005ab6dd50

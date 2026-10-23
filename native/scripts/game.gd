@@ -319,7 +319,7 @@ func new_workshop():
 func task_history():
 	var box=panel("Task history · real work")
 	if not pending.is_empty() and pending.get("kind")=="document":box.add_child(GenesisUI.button("Cancel current task",func():
-		brain.request.cancel_request();brain.busy=false;state.task_status(pending.get("id",""),"canceled","Canceled by you; notes retained.")
+		brain.cancel();state.task_status(pending.get("id",""),"canceled","Canceled by you; notes retained.")
 		world.actions[int(pending.actor)]="Idle";pending={};task_history()))
 	if state.data.tasks.is_empty():box.add_child(GenesisUI.label("Create a document to start a task. Only approval earns progress."))
 	for task in state.data.tasks:

@@ -1,0 +1,17 @@
+{
+  "scope": "Host contract and Android native cross-build, no local genuine model/device/signing/public acceptance",
+  "sourceFiles": {
+    "native/inference/inference_core.cpp": "cd13903351d0f10423ca469d7cd860eedf20499141e30cbce15a0f02b73abed5",
+    "native/inference/inference_core.h": "efb5a9f09ba74ceb2d0d941861487a56b2d1856fa08419383d9d0044b1313f20",
+    "native/inference/inference_extension.c": "cf1f199c2191c27238250cbed8c6f09cbd6e81f7cd41b1138f698adfedbcbb29",
+    "native/inference/CMakeLists.txt": "41a84436dfb587196ee94d9b1e853b0e9d13d7036e00c2d41656608f94eafecd",
+    "native/inference.gdextension": "3acee6f27c2a55bf836807f831b9175d8f493dffe3611e2eb4e3f9ce8f896b66",
+    "scripts/build_inference_bridge.py": "8ec7cc75b2a398086b940527d06b678233ac8ba44df1214496f2972df4ce9997"
+  },
+  "regressions": [
+    "Private SHA256/UTF8 vectors passed",
+    "Source file mutation after snapshot cannot change loaded verified bytes",
+    "Cancellation clears snapshot and result"
+  ],
+  "review": "Fresh source review found no worker/ABI/UTF8 bug; model mutation concern fixed with private snapshot and dependency declarations added; final APK verification remains open"
+}
