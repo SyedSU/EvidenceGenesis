@@ -6,3 +6,4 @@ reloadable = false
 [libraries]
 windows.x86_64 = "res://genesis_save.dll"
 linux.x86_64 = "res://genesis_save.so"
+android.arm64 = "res://genesis_save.android.arm64.so"

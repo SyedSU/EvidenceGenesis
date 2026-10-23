@@ -26,12 +26,12 @@ jobs:
         with:
           name: EvidenceGenesis-Windows-v0.5.0
           path: build/EvidenceGenesis-Windows-v0.5.0.zip
-          retention-days: 30
+          retention-days: 3
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
           name: EvidenceGenesis-components-v0.5.0
           path: build/components/*
-          retention-days: 30
+          retention-days: 3
           if-no-files-found: error

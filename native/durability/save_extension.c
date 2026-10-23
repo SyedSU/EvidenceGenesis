@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-_Static_assert(sizeof(void *)==8,"Genesis save adapter requires x86_64");
+_Static_assert(sizeof(void *)==8,"Genesis save adapter requires a 64-bit target");
 /* String/StringName are 8-byte opaque types in the pinned float_64 ABI. */
 static void *class_name;
 static GDExtensionClassLibraryPtr library;

@@ -1,0 +1,20 @@
+name: Inspect Actions artifact storage
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/storage.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: List artifact identities and sizes without deleting anything
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh --version
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" --paginate --jq '.artifacts[] | {id,name,size_in_bytes,expired,created_at,expires_at,digest,workflow_run}'

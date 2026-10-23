@@ -1,0 +1,11 @@
+{
+  "scope": "Linux compile-only Android arm64 source verification; no accepted APK or phone inference",
+  "sha256": {
+    "scripts/build_android_runtime.py": "af0d4278f3743379d31f8d33cd540ae3ff73a8262c52974c7586df5ada76937a",
+    "scripts/build_save_adapter.py": "3ac065b2985ba4409bb7f2818fc71668daab9773a613d0ca26df212673844256",
+    "tests/test_android_adapter.py": "f3338735ed5d72f6eb54d46a240a4797093df541636543fa24a1cecddb80a148",
+    "tests/test_android_runtime.py": "3f5ac104745bbec8569987ea40a7b524d16dbdf64408abe691914e00afa0a115",
+    "native/durability.gdextension": "bcf3154b8f9818eda0aebf5e347096845546c970db6e841379c6aed587c90ece",
+    "native/durability/save_extension.c": "9764cd8f402794dca78645209f1434a98b3d169b5fedbe701c50fead53f76c8b"
+  }
+}
